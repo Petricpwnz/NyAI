@@ -1,0 +1,47 @@
+[bot]
+nick = NyAI
+username = NyAI
+realname = NyAI
+nickserv_password = howAboutNo
+
+host = irc.faforever.com
+port = 6667
+
+twitchnick = FAFMAI
+twitchoauth = howAboutNo
+twitchhost = irc.chat.twitch.tv
+twitchport = 6667
+
+lstm_chars = ./files/faf_chars.json
+lstm_weights = ./files/faf_weights.npy
+
+includes =
+    irc3.plugins.command
+    qai_plugin
+    irc3.plugins.storage
+
+storage = json://database/db.json
+autosave = 600
+markovwordsstorage_chat = ./database/dbmarkovChat.json
+markovwordsstorage_changelog = ./database/dbmarkovChangelogs.json
+chatlevelstorage = ./database/chatlevel.json
+chateventstorage = ./database/chatevents.json
+chatmiscstorage = ./database/chatmisc.json
+
+autojoins =
+    shadows
+    aeolus
+
+spam_protect_time = 60
+default_command_point_requirement = 500
+
+[irc3.plugins.command]
+antiflood = true
+cmd = !
+guard = irc3.plugins.command.mask_based_policy
+
+[irc3.plugins.command.masks]
+# this section is used by the guard to secure the bot's command
+# change your nickname and uncomment the line below
+TouchFluffyTails!*@* = all_permissions
+* = view

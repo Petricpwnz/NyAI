@@ -1,0 +1,13 @@
+/database
+/backups
+passwords.py
+db.json
+*.pyc
+fafbot.conf
+.coverage
+config.ini
+.idea
+Pipfile.lock
+/.pytest_cache
+/.cache
+log.txt
