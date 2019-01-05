@@ -183,7 +183,7 @@ class Poker:
 
     def __outputToChat(self, channel, msg):
         #self.debugPrint(channel + ': ' + msg)
-        self.bot.privmsg(channel, msg)
+        self.bot.privmsg(channel, msg, nowait=True)
 
     def __cardsIsFlush(self, playercards):
         # return true/false, subset (at least 5), remaining

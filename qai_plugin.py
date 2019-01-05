@@ -2114,7 +2114,7 @@ class Plugin(object):
         # winner print
         #TODO write stuff non-delayed :(
         if ((len(result) == 2 and maibet) or (len(result) == 1 and not maibet)) and (not (winner == self.bot.config['nick'])):
-            self.bot.privmsg(args.get('channel'), 'The roulette ended without competition (points returned)')
+            self.bot.privmsg(args.get('channel'), 'The roulette ended without competition (points returned)', nowait=True)
         else:
             endstring = ""
             if winner == self.bot.config['nick']:
