@@ -2,6 +2,8 @@ import json
 import threading
 import time
 
+# allowNegative - allow to go into negative with ur points account
+
 POINTS_PER_CHATLVL = 5
 
 

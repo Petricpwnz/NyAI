@@ -16,12 +16,14 @@ import traceback
 import json
 import shutil
 from datetime import datetime, timedelta
+from numpy.random import choice
 
 from decorators import nickserv_identified, channel_only
 from extra.twitch import twitchThread
 from timed_input_accumulator import timedInputAccumulatorThread
 from periodic_callback import periodicCallback
 from modules import reminder_thread
+from modules import fluffy_tails_thread
 from modules.markov import Markov
 from points import Points
 from events import Events
@@ -30,11 +32,13 @@ from modules.bet import Bets
 from extra.roasts import BHROASTS
 from modules.questions import Questions
 from extra.eight_ball_phrases import BALL_PHRASES
+from extra.fluffy_tail_effects import FLUFFY_TAIL_EFFECTS
 
 
-ADMINS = ['TouchFluffyTails', 'Tamamo', 'Washy', 'Blackheart']
-MAIN_CHANNEL = '#autisticenvironment'  #  autisticenvironment
-POKER_CHANNEL = '#autisticenvironment'  #  autisticenvironment
+FLUFFY_TAIL_EFFECTS = list(FLUFFY_TAIL_EFFECTS.items())
+ADMINS = ['TouchFluffyTails', 'Fremy_Speeddraw', 'Washy', 'Blackheart']
+MAIN_CHANNEL = '#aeolus'  #  autisticenvironment
+POKER_CHANNEL = '#poker'  #  autisticenvironment
 REMINDER_RECEIVERS = {}
 IGNOREDUSERS = {}
 CDPRIVILEDGEDUSERS = {}
@@ -85,15 +89,21 @@ class Plugin(object):
         self.loop = asyncio.new_event_loop()
         #asyncio.set_event_loop(self.loop)
         #self.oldHelp = self.help
-        global NICKSERVRESPONSESLOCK, CHATLVL_COMMANDLOCK, REMINDER_DB_ACTION_LOCK
+        global NICKSERVRESPONSESLOCK, CHATLVL_COMMANDLOCK, REMINDER_DB_ACTION_LOCK, FLUFFY_TAILS_LOCK
         CHATLVL_COMMANDLOCK = threading.Lock()
         NICKSERVRESPONSESLOCK = threading.Lock()
         REMINDER_DB_ACTION_LOCK = threading.Lock()
+        FLUFFY_TAILS_LOCK = threading.Lock()
 
     def start_reminder_thread(self):
         self.reminder = reminder_thread.ReminderThread(self, self.bot)
         self.reminder.daemon = True
         self.reminder.start()
+
+    def start_fluffy_tails_thread(self):
+        self.tails = fluffy_tails_thread.FluffyTailsThread(self, self.bot)
+        self.tails.daemon = True
+        self.tails.start()
 
     def debugPrint(self, text):
         if useDebugPrint:
@@ -146,7 +156,7 @@ class Plugin(object):
         #if not msg.startswith('!'):
         #    self.__addText(msg)
         global IGNOREDUSERS, MAIN_CHANNEL
-        if channel == MAIN_CHANNEL and "undress MAI" in msg:
+        if channel == MAIN_CHANNEL and "undress NyAI" in msg:
             if not self.spam_protect("undress", "setoner", MAIN_CHANNEL, args):
                 self.bot.action(channel, "blushes and reveals http://i.imgur.com/IOnpStK.png")
             return
@@ -256,7 +266,7 @@ class Plugin(object):
         self.__db_add([], 'ignoredusers', {}, overwrite_if_exists=False, save=False)
         self.__db_add([], 'cdprivilege', {}, overwrite_if_exists=False, save=False)
         for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder',
-                  'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin']:
+                  'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'eightball', 'roll']:
             self.__db_add(['timers'], t, DEFAULTCD, overwrite_if_exists=False, save=False)
         for t in ['cmd_chain_points_min', 'cmd_chainf_points_min', 'cmd_chainb_points_min', 'cmd_chain_points_min',
                   'cmd_rancaps_points_min', 'cmd_answer_qpoints_max', 'cmd_bhroast_points_min', 'cmd_rearrange_points_min',
@@ -312,6 +322,7 @@ class Plugin(object):
             self.LSTMGen = LSTMGen(self.bot)
         self.TEXT = ""
         self.start_reminder_thread()
+        self.start_fluffy_tails_thread()
 
         t1 = time.clock()
         print("Startup time: {t}".format(**{"t": format(t1 - t0, '.4f')}))
@@ -359,7 +370,7 @@ class Plugin(object):
         t = args.get('<target>')
         m = " ".join(args.get('WORDS'))
         print(t, m)
-        self.bot.action(t, m)
+        self.pm_fix(mask, t, m, action=True)
 
     @command(permission='admin', public=False, show_in_help_list=False)
     async def mode(self, mask, target, args):
@@ -496,14 +507,14 @@ class Plugin(object):
         global TIMERS, DEFAULTCD
         if get:
             if timer:
-                self.bot.privmsg(mask.nick, 'The cooldown for "' + timer + '" is set to ' + str(TIMERS.get(timer, DEFAULTCD)))
+                self.pm_fix(mask, target, 'The cooldown for "' + timer + '" is set to ' + str(TIMERS.get(timer, DEFAULTCD)))
             else:
                 for key in TIMERS.keys():
-                    self.bot.privmsg(mask.nick, 'The cooldown for "' + key + '" is set to ' + str(TIMERS.get(key, DEFAULTCD)))
+                    self.pm_fix(mask, target, 'The cooldown for "' + key + '" is set to ' + str(TIMERS.get(key, DEFAULTCD)))
         if set:
             TIMERS[timer] = int(time)
             self.__db_add(['timers'], timer, TIMERS[timer], save=True)
-            self.bot.privmsg(mask.nick, 'The cooldown for "' + timer + '" is now changed to ' + str(TIMERS[timer]))
+            self.pm_fix(mask, target, 'The cooldown for "' + timer + '" is now changed to ' + str(TIMERS[timer]))
 
     @command(permission='admin', public=False, show_in_help_list=False)
     @nickserv_identified
@@ -585,6 +596,7 @@ class Plugin(object):
         self.__db_add(['chatlvlmisc'], 'epoch', CHATLVL_EPOCH, overwrite_if_exists=True, save=True)
 
     @command(permission='admin')
+    @nickserv_identified
     async def ignore(self, mask, target, args):
         """ Change the ignore list
 
@@ -625,7 +637,7 @@ class Plugin(object):
     @command(permission='admin', public=False, show_in_help_list=False)
     @nickserv_identified
     async def chatlvlwords(self, mask, target, args):
-        """ Change the cdprivilege list, which shortens individual cooldowns
+        """ Special words that affect chatpoints
 
             %%chatlvlwords get
             %%chatlvlwords add <points> TEXT ...
@@ -660,7 +672,7 @@ class Plugin(object):
         if not self.playerslists.get('poker', {}).get(mask.nick, False):
             self.__db_add(['playerlists', 'poker'], mask.nick, True, save=True)
             self.playerslists = self.__db_get(['playerlists'])
-            self.bot.privmsg(mask.nick, "Welcome in the poker community!")
+            self.pm_fix(mask, target, "Welcome in the poker community!")
 
     @command()
     async def unpoker(self, mask, target, args):
@@ -671,9 +683,10 @@ class Plugin(object):
         if self.playerslists.get('poker', {}).get(mask.nick, False):
             self.__db_del(['playerlists', 'poker'], mask.nick, save=True)
             self.playerslists = self.__db_get(['playerlists'])
-            self.bot.privmsg(mask.nick, "Too bad you're leaving!")
+            self.pm_fix(mask, target, "Too bad you're leaving!")
 
     @command()
+    @channel_only
     async def to(self, mask, target, args):
         """Inform your fellow players of important events
 
@@ -737,9 +750,10 @@ class Plugin(object):
                                      all=[('chatpoints_min', VARS.get('cmd_bhroast_points_min', DEFAULTVALUE))],
                                      any=[('bot_admin', 0), ('is_in_top5', 0)])
         if hp:
-            self.bot.privmsg(target, "%s" % random.choice(BHROASTS))
+            self.pm_fix(mask, target, "%s" % random.choice(BHROASTS))
 
     @command()
+    @channel_only
     async def question(self, mask, target, args):
         """
 
@@ -807,9 +821,10 @@ class Plugin(object):
                 rtext += l
             else:
                 rtext += l.capitalize()
-        self.bot.privmsg(target, rtext)
+        self.pm_fix(mask, target, rtext)
 
     @command()
+    @channel_only
     async def changelog(self, mask, target, args):
         """ See what the future will bring
 
@@ -817,9 +832,10 @@ class Plugin(object):
         """
         if self.spam_protect('changelog', mask, target, args, specialSpamProtect='changelog'):
             return
-        self.bot.privmsg(target, self.ChangelogMarkov.forwardSentence(False, 30, target, includeWord=True))
+        self.pm_fix(mask, target, self.ChangelogMarkov.forwardSentence(False, 30, target, includeWord=True))
 
     @command()
+    @channel_only
     async def mgym(self, mask, target, args):
         """ Top gym quotes, all legit!
 
@@ -833,7 +849,7 @@ class Plugin(object):
                                      any=[('bot_admin', 0), ('is_in_top5', 0)])
         if not hp:
             return
-        self.bot.privmsg(target, self.GymMarkov.forwardSentence(False, 30, target, includeWord=True))
+        self.pm_fix(mask, target, self.GymMarkov.forwardSentence(False, 30, target, includeWord=True))
 
     @command(permission='admin', public=False, show_in_help_list=False)
     @nickserv_identified
@@ -853,6 +869,7 @@ class Plugin(object):
             return "Disabled the word."
 
     @command()
+    @channel_only
     async def chain(self, mask, target, args):
         """ Chain words both directions <3
 
@@ -872,11 +889,10 @@ class Plugin(object):
         word = args.get('<word>', False)
         forward = self.AeolusMarkov.forwardSentence(word, 20, target, includeWord=False)
         backward = self.AeolusMarkov.backwardSentence(word, 20, target, includeWord=True)
-        self.bot.privmsg(target, backward + forward)
+        self.pm_fix(mask, target, backward + forward)
 
     if useLSTM:
         @command(public=False)
-
         async def generate(self, mask, target, args):
             """ Generate a text based on LSTMs
 
@@ -892,6 +908,7 @@ class Plugin(object):
             self.bot.privmsg(target, gen)
 
     @command()
+    @channel_only
     async def chainf(self, mask, target, args):
         """ Chain words forwards <3
 
@@ -906,9 +923,10 @@ class Plugin(object):
         if self.spam_protect('chain', mask, target, args, specialSpamProtect='chain'):
             return
         word = args.get('<word>', False)
-        self.bot.privmsg(target, self.AeolusMarkov.forwardSentence(word, 30, target, includeWord=True))
+        self.pm_fix(mask, target, self.AeolusMarkov.forwardSentence(word, 30, target, includeWord=True))
 
     @command()
+    @channel_only
     async def chainb(self, mask, target, args):
         """ Chain words backwards <3
 
@@ -923,7 +941,7 @@ class Plugin(object):
         if self.spam_protect('chain', mask, target, args, specialSpamProtect='chain'):
             return
         word = args.get('<word>', False)
-        self.bot.privmsg(target, self.AeolusMarkov.backwardSentence(word, 30, target, includeWord=True))
+        self.pm_fix(mask, target, self.AeolusMarkov.backwardSentence(word, 30, target, includeWord=True))
 
     @command()
     async def chainprob(self, mask, target, args):
@@ -934,7 +952,7 @@ class Plugin(object):
         if self.spam_protect('chainprob', mask, target, args, specialSpamProtect='chainprob'):
             return
         w1, w2 = args.get('<word1>'), args.get('<word2>')
-        self.bot.privmsg(target, self.AeolusMarkov.chainprob(w1, w2))
+        self.pm_fix(mask, target, self.AeolusMarkov.chainprob(w1, w2))
 
     def update_chatlevels(self, mask, channel, msg):
         if msg.startswith('!'):
@@ -946,7 +964,11 @@ class Plugin(object):
                 points += CHATLVLWORDS[word]
         # wordcount = len(text.split())
         lettercount = len(text.replace(" ", ""))
-        points += 0.1 * lettercount
+        try:
+            modifier = self.__db_get(['fluffy_tails', mask.nick, 'modifier'])
+            points += (0.1 * lettercount) * modifier
+        except (KeyError, TypeError):
+            points += 0.1 * lettercount
         if channel in self.__db_get(['chatlvlchannels']).values():
             self.Chatpoints.updatePointsById(mask.nick, points)
         if channel.startswith('#'):
@@ -989,6 +1011,8 @@ class Plugin(object):
             additions += ", " + format(data.get('chatroulette'), '.1f') + " from roulette"
         if data.get('questions', False):
             additions += ", " + format(data.get('questions'), '.1f') + " from questions"
+        if data.get('fluffy_tails', False):
+            additions += ", " + format(data.get('fluffy_tails'), '.1f') + " from fluffy tails"
         self.bot.privmsg(location, "{object}'s points: {total}, level {level}, {toUp} to next level{additions}".format(**{
             "object": name,
             "level": str(data.get('level', 1)),
@@ -1007,6 +1031,7 @@ class Plugin(object):
         await self.chattip(mask, target, args)
 
     @command()
+    @channel_only
     @nickserv_identified
     async def chattip(self, mask, target, args):
         """ Tip some chatlvl points to someone <3
@@ -1181,7 +1206,7 @@ class Plugin(object):
         if default and not all:
             CHATLVL_TOPPLAYERS = top5
             self.__db_add([], 'chatlvltopplayers', CHATLVL_TOPPLAYERS, overwrite_if_exists=True, try_saving_with_new_key=False, save=True)
-        self.bot.privmsg(target, announceString.format(**{
+        self.pm_fix(mask, target, announceString.format(**{
             "list": ", ".join(announcePlayers),
         }))
 
@@ -1271,7 +1296,7 @@ class Plugin(object):
                 return "There are no games to talk about!"
             data['hwinner'] = self.getUnpingableName(self.Chatpoints.getById(data['hwinner'])['n'])
             data['roiwinner'] = self.getUnpingableName(self.Chatpoints.getById(data['roiwinner'])['n'])
-            self.bot.action(channel, "Chatroulette stats! Total games: {count}, total points bet: {totalpoints}, average points per game: {avg}, "
+            self.pm_fix(mask, channel, "Chatroulette stats! Total games: {count}, total points bet: {totalpoints}, average points per game: {avg}, "
                                      "highest stake game: {hpoints} points won by {hwinner}, "
                                      "highest ROI game: (R={roiwin}; I={roibet}, ratio={roiratio}) by {roiwinner}".format(**data))
             return
@@ -1284,14 +1309,14 @@ class Plugin(object):
                 return "There are no games to talk about!"
             #data['hwinners'] = ", ".join([self.getUnpingableName(self.Chatpoints.getById(name)['n']) for name in data['hwinners']])    # to be used once ids are saved rather than names
             data['hwinners'] = ", ".join([self.getUnpingableName(name) for name in data['hwinners']])
-            self.bot.action(channel, "Chatpoker stats! Total games: {count}, total points: {totalpoints}, average points per game: {avg}, "
+            self.pm_fix(mask, channel, "Chatpoker stats! Total games: {count}, total points: {totalpoints}, average points per game: {avg}, "
                                      "highest stake game: {hpoints} points won by {hwinners}".format(**data))
             return
         if questions:
             data = self.Chatevents.getFormattedQuestionData('question')
             if len(data) < 1:
                 return "There are no stats to talk about!"
-            self.bot.action(channel, "Questions stats! Total games: {count}, total points: {totalpoints}, "
+            self.pm_fix(mask, channel, "Questions stats! Total games: {count}, total points: {totalpoints}, "
                                      "average points per game: {avg}".format(**data))
             return
 
@@ -1322,6 +1347,7 @@ class Plugin(object):
         self.debugPrint('commandlock release chatlvlpoints eof')
 
     @command(permission='admin', show_in_help_list=False)
+    @channel_only
     @nickserv_identified
     async def chatslap(self, mask, target, args):
         """ Slap someone and remove some of his points
@@ -1436,6 +1462,8 @@ class Plugin(object):
 
             %%roll
         """
+        if self.spam_protect('roll', mask, target, args, specialSpamProtect='roll'):
+            return
         return f'{mask.nick} rolls {random.randint(0, 100)}!'
 
     @command(name='8ball')
@@ -1446,9 +1474,200 @@ class Plugin(object):
 
             %%8ball WORDS ...
         """
-        if self.spam_protect('8ball', mask, target, args):
-                return
+        if self.spam_protect('eight_ball', mask, target, args, specialSpamProtect='eight_ball'):
+            return
         return f'{random.choice(BALL_PHRASES)}'
+
+    @command
+    @channel_only
+    @nickserv_identified
+    def touch(self, mask, target, args):
+        """Magical fluffy tails that grant boons or curses to the brave ones that dare touch them. Limited by one touch per day per user.
+
+            %%touch
+        """
+        def get_weights():
+            try:
+                weights = [effect[1]['weight'] for effect in FLUFFY_TAIL_EFFECTS]
+            except Exception:
+                weights = [0 for effect in range(len(FLUFFY_TAIL_EFFECTS))]
+
+            scoreSum = sum(weights)
+            for i, weight in enumerate(weights):
+                try:
+                    weights[i] = 1.0 / (scoreSum / weight)
+                except ZeroDivisionError:
+                    weights[i] = 0.0
+                    continue
+            return weights
+
+        def pointboost(*args, **kwargs):
+            with CHATLVL_COMMANDLOCK:
+                self.debugPrint('commandlock acquire tails point manip')
+                for i, user in enumerate(self.Chatpoints.getSortedBy(by='p', reversed=True)):
+                    if not self._is_a_channel(user[0]):
+                        top1 = self.Chatpoints.getSortedBy(by='p', reversed=True)[i]
+                        break
+                user_points = self.Chatpoints.getPointsById(mask.nick)
+                name, points = mask.nick, abs(int(top1[1] - user_points))
+                self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=True)
+                self.Chatevents.addEvent('fluffy_tails', {
+                    'by': mask.nick,
+                    'target': name,
+                    'points': points,
+                })
+            self.debugPrint('commandlock release tails point manip')
+
+        def randompoints(*args, **kwargs):
+            with CHATLVL_COMMANDLOCK:
+                self.debugPrint('commandlock acquire tails point manip')
+                name, points = mask.nick, delta
+                self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=True)
+                self.Chatevents.addEvent('fluffy_tails', {
+                    'by': mask.nick,
+                    'target': name,
+                    'points': points,
+                })
+            self.debugPrint('commandlock release tails point manip')
+
+        def topshare(*args, **kwargs):
+            with CHATLVL_COMMANDLOCK:
+                self.debugPrint('commandlock acquire tails point manip')
+                for i, user in enumerate(self.Chatpoints.getSortedBy(by='p', reversed=True)):
+                    if not self._is_a_channel(user[0]):
+                        top1 = self.Chatpoints.getSortedBy(by='p', reversed=True)[i]
+                        break
+                takername, givername, points = mask.nick, top1[0], 100
+                self.Chatpoints.transferPointsByIdsSimple(takername, givername, points, partial=True, addTo='chattip')
+                self.Chatevents.addEvent('fluffy_tails', {
+                    'by': takername,
+                    'target': givername,
+                    'points': -points,
+                })
+                self.Chatevents.addEvent('chattip', {
+                    'giver': givername,
+                    'taker': takername,
+                    'points': points,
+                })
+            self.debugPrint('commandlock release tails point manip')
+
+        def toprape(*args, **kwargs):
+            with CHATLVL_COMMANDLOCK:
+                self.debugPrint('commandlock acquire tails point manip')
+                top5 = []
+                for i, user in enumerate(self.Chatpoints.getSortedBy(by='p', reversed=True)):
+                    if not self._is_a_channel(user[0]):
+                        top5.append(self.Chatpoints.getSortedBy(by='p', reversed=True)[i])
+                        if len(top5) >= 5:
+                            break
+                points = -100
+                for user in top5:
+                    name = user[0]
+                    self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=True)
+                    self.Chatevents.addEvent('fluffy_tails', {
+                        'by': mask.nick,
+                        'target': name,
+                        'points': points,
+                    })
+            self.debugPrint('commandlock release tails point manip')
+
+        def reset(*args, **kwargs):
+            self.chatreset()
+
+        def pointrape(*args, **kwargs):
+            with CHATLVL_COMMANDLOCK:
+                self.debugPrint('commandlock acquire tails point manip')
+                user_points = self.Chatpoints.getPointsById(mask.nick)
+                name, points = mask.nick, int(-user_points) - 1
+                self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=True)
+                self.Chatevents.addEvent('fluffy_tails', {
+                    'by': mask.nick,
+                    'target': name,
+                    'points': points,
+                })
+            self.debugPrint('commandlock release tails point manip')
+
+        SPECIAL_EFFECT_SWITCH = {
+            None: None,
+            'pointboost': pointboost,
+            'randompoints': randompoints,
+            'topshare': topshare,
+            'toprape': toprape,
+            'reset': reset,
+            'pointrape': pointrape,
+        }
+
+        if self.spam_protect('touch', mask, target, args):
+            return
+        if mask.nick in self.__db_get(['fluffy_tails']):
+            self.bot.privmsg(mask.nick, 'Fluffy tails are in huge demand, therefore you can only touch them once per day. You will have to wait for your turn.')
+            return
+        weights = get_weights()
+        roll = int(choice(range(len(FLUFFY_TAIL_EFFECTS)), 1, p=weights))
+        pick = FLUFFY_TAIL_EFFECTS[roll]
+        effect_message = pick[1].get('message_on_roll', '')
+        if 'modifier' in pick[1]:
+            with FLUFFY_TAILS_LOCK:
+                self.__db_add(['fluffy_tails'], mask.nick,
+                              {'modifier': pick[1]['modifier'], 'time': str(time.strftime("%d-%m-%Y %H:%M:%S")),
+                              'expiration_date': str(datetime.now() + timedelta(days=1,
+                                                                               seconds=0,
+                                                                               microseconds=0,
+                                                                               milliseconds=0,
+                                                                               minutes=0,
+                                                                               hours=0,
+                                                                               weeks=0))},
+                              overwrite_if_exists=True, try_saving_with_new_key=False)
+        elif 'points' in pick[1]:
+            with CHATLVL_COMMANDLOCK:
+                self.debugPrint('commandlock acquire tails point manip')
+                name, points = mask.nick, pick[1].get('points', 0)
+                self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=True)
+                self.Chatevents.addEvent('fluffy_tails', {
+                    'by': mask.nick,
+                    'target': name,
+                    'points': points,
+                })
+            self.debugPrint('commandlock release tails point manip')
+            with FLUFFY_TAILS_LOCK:
+                self.__db_add(['fluffy_tails'], mask.nick,
+                              {'points': pick[1]['points'], 'time': str(time.strftime("%d-%m-%Y %H:%M:%S")),
+                              'expiration_date': str(datetime.now() + timedelta(days=1,
+                                                                               seconds=0,
+                                                                               microseconds=0,
+                                                                               milliseconds=0,
+                                                                               minutes=0,
+                                                                               hours=0,
+                                                                               weeks=0))},
+                              overwrite_if_exists=True, try_saving_with_new_key=False)
+        elif 'special_effect' in pick[1]:
+            if pick[1]['special_effect'] == 'randompoints':
+                delta = random.randint(-100, 100)
+                effect_message += f'{str(delta)}!'
+            effect = SPECIAL_EFFECT_SWITCH.get(pick[1]['special_effect'], None)
+            try:
+                if pick[1]['special_effect'] == 'randompoints':
+                    effect(delta=delta)
+                else:
+                    effect()
+            except TypeError:
+                pass
+            with FLUFFY_TAILS_LOCK:
+                self.__db_add(['fluffy_tails'], mask.nick,
+                              {'special_effect': pick[1]['special_effect'], 'time': str(time.strftime("%d-%m-%Y %H:%M:%S")),
+                              'expiration_date': str(datetime.now() + timedelta(days=1,
+                                                                               seconds=0,
+                                                                               microseconds=0,
+                                                                               milliseconds=0,
+                                                                               minutes=0,
+                                                                               hours=0,
+                                                                               weeks=0))},
+                              overwrite_if_exists=True, try_saving_with_new_key=False)
+        return f'{mask.nick} touches the fluffy tails! {effect_message}'
+
+    def _clear_tails_effect(self, affected_user):
+        with FLUFFY_TAILS_LOCK:
+            self.__db_del(['fluffy_tails'], affected_user)
 
     def __tourneyAdd(self, id, channel):
         tourneydata = self.ChatgameTourneys.get(channel, False)
@@ -1620,6 +1839,7 @@ class Plugin(object):
                 self.bot.privmsg(mask.nick, 'Something went wrong! (probably lower writing strength than needed)')
 
     @command
+    # @channel_only
     async def chatbet(self, mask, target, args):
         """ Betting!
 
@@ -1685,6 +1905,7 @@ class Plugin(object):
         return {}
 
     @command(show_in_help_list=False)
+    @channel_only
     async def cp(self, mask, target, args):
         """ %%cp join [<points>]
             %%cp signup [<points>]
@@ -1698,6 +1919,7 @@ class Plugin(object):
         return (await self.cpoker(mask, target, args))
 
     @command
+    @channel_only
     async def cpoker(self, mask, target, args):
         """ %%cpoker join [<points>]
             %%cpoker signup [<points>]
@@ -1801,6 +2023,7 @@ class Plugin(object):
         })
 
     @command
+    @channel_only
     async def cr(self, mask, target, args):
         """ Shortcut to the chatroulette command
 
@@ -1809,6 +2032,7 @@ class Plugin(object):
         await self.chatroulette(mask, target, args)
 
     @command
+    @channel_only
     async def chatroulette(self, mask, target, args):
         """ Play the chat point roulette! Bet points, 20s after the initial roll, a winner is chosen.
             Probability scales with points bet. The winner gets all points.
@@ -2125,7 +2349,8 @@ class Plugin(object):
         return dct.keys()[len(dct) - 1], total
 
     @command(permission='admin', public=False, show_in_help_list=False)
-    async def chatlvlchannels(self, mask, target, args):
+    @nickserv_identified
+    def chatlvlchannels(self, mask, target, args):
         """Adds/removes a given channel to those which points can be farmed in
             %%chatlvlchannels get
             %%chatlvlchannels add TEXT ...
@@ -2141,6 +2366,7 @@ class Plugin(object):
         self.__genericSpamCommand(mask, target, args, ['spam', 'cats'], specialSpamProtect='spam_cats')
 
     @command(permission='admin', public=False, show_in_help_list=False)
+    @nickserv_identified
     async def catsadmin(self, mask, target, args):
         """Adds/removes a given text from the quotelist.
             %%catsadmin get
@@ -2158,7 +2384,6 @@ class Plugin(object):
         except Exception:
             self.debugPrint('__genericSpamCommand: Trying to sample from empty list: ' + repr(path))
 
-    @nickserv_identified
     def __genericCommandManage(self, mask, target, args, path, allowSameValue=False):
         """
         Generic managing of adding/removing/getting
@@ -2274,7 +2499,7 @@ class Plugin(object):
 
     def pm_fix(self, mask, target, message, action=False, nowait=False):
         """Fixes bot PMing itself instead of the user if privmsg is called by user in PM instead of a channel."""
-        if target == self.bot.config['username']:
+        if target == self.bot.config['nick']:
             target = mask.nick
         if action is False:
             return self.bot.privmsg(target, message, nowait=nowait)
