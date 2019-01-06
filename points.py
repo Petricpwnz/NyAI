@@ -79,6 +79,7 @@ class Points():
             'chatpoker': element.get('chatpoker', False),
             'chattip': element.get('chattip', False),
             'questions': element.get('questions', False),
+            'fluffy_tails': element.get('fluffy_tails', False),
         }
 
     def setOnJoinMsgById(self, id, msg, writeStrength=2, announcementStrength=2, delete=False):

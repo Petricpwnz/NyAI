@@ -265,7 +265,7 @@ class Plugin(object):
         DEFAULTVALUE = self.bot.config.get('default_command_point_requirement', 500)
         self.__db_add([], 'ignoredusers', {}, overwrite_if_exists=False, save=False)
         self.__db_add([], 'cdprivilege', {}, overwrite_if_exists=False, save=False)
-        for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder',
+        for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder', 'foxgirls',
                   'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'eightball', 'roll']:
             self.__db_add(['timers'], t, DEFAULTCD, overwrite_if_exists=False, save=False)
         for t in ['cmd_chain_points_min', 'cmd_chainf_points_min', 'cmd_chainb_points_min', 'cmd_chain_points_min',
@@ -1013,6 +1013,11 @@ class Plugin(object):
             additions += ", " + format(data.get('questions'), '.1f') + " from questions"
         if data.get('fluffy_tails', False):
             additions += ", " + format(data.get('fluffy_tails'), '.1f') + " from fluffy tails"
+        # try except not working, exception is caught somewhere in irc3 library?
+        if self.__db_get(['fluffy_tails', mask.nick, 'modifier']):
+            modifier = self.__db_get(['fluffy_tails', mask.nick, 'modifier'])
+            expiration_date = str(self.__db_get(['fluffy_tails', mask.nick, 'expiration_date']))[:19]
+            additions += f'. His chatpoint gain from typing is modified by {modifier} until {expiration_date}.'
         self.bot.privmsg(location, "{object}'s points: {total}, level {level}, {toUp} to next level{additions}".format(**{
             "object": name,
             "level": str(data.get('level', 1)),
@@ -1600,7 +1605,8 @@ class Plugin(object):
         if self.spam_protect('touch', mask, target, args):
             return
         if mask.nick in self.__db_get(['fluffy_tails']):
-            self.bot.privmsg(mask.nick, 'Fluffy tails are in huge demand, therefore you can only touch them once per day. You will have to wait for your turn.')
+            expiration_date = datetime.strptime(self.__db_get(['fluffy_tails', mask.nick, 'expiration_date']), '%Y-%m-%d %H:%M:%S.%f')
+            self.bot.privmsg(mask.nick, f'Fluffy tails are in huge demand, therefore you can only touch them once per day. Wait {str(expiration_date - datetime.now())[:8]} for your turn.')
             return
         weights = get_weights()
         roll = int(choice(range(len(FLUFFY_TAIL_EFFECTS)), 1, p=weights))
@@ -1623,6 +1629,7 @@ class Plugin(object):
                 self.debugPrint('commandlock acquire tails point manip')
                 name, points = mask.nick, pick[1].get('points', 0)
                 self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=True)
+                self.Chatpoints.updateById(name, delta={'fluffy_tails': points}, allowNegative=True)
                 self.Chatevents.addEvent('fluffy_tails', {
                     'by': mask.nick,
                     'target': name,
@@ -2374,6 +2381,23 @@ class Plugin(object):
             %%catsadmin del <ID>
         """
         return self.__genericCommandManage(mask, target, args, ['spam', 'cats'])
+
+    @command
+    async def foxgirls(self, mask, target, args):
+        """Show a foxgirl image
+            %%foxgirls
+        """
+        self.__genericSpamCommand(mask, target, args, ['spam', 'foxgirls'], specialSpamProtect='foxgirls')
+
+    @command(permission='admin', public=False, show_in_help_list=False)
+    @nickserv_identified
+    async def foxgirlsadmin(self, mask, target, args):
+        """Adds/removes a given text from the quotelist.
+            %%foxgirlsadmin get
+            %%foxgirlsadmin add TEXT ...
+            %%foxgirlsadmin del <ID>
+        """
+        return self.__genericCommandManage(mask, target, args, ['spam', 'foxgirls'])
 
     def __genericSpamCommand(self, mask, target, args, path, specialSpamProtect=None):
         if self.spam_protect("-".join(path), mask, target, args, specialSpamProtect=specialSpamProtect):
