@@ -27,7 +27,7 @@ FLUFFY_TAIL_EFFECTS = {
 
     'small_icp_boon': {
         'points': 50,
-        'weight': 111170,
+        'weight': 70,
         'message_on_roll': 'He is instantly gratified with 50 chatpoints!',
         'status_message': ''
     },
