@@ -29,10 +29,10 @@ def nickserv_identified(func):
         return wrapper
 
 
-def channel_only(*argz):
+def channel_only(*args):
     channels = None
-    if argz:
-        channels = argz
+    if args:
+        channels = args
 
     def outer_wrapper(func):
         @wraps(func)

@@ -24,7 +24,6 @@ class FluffyTailsThread(threading.Thread):
                     raise StartOverException
                 time.sleep(1)
                 for second in range(0, time_to_wait + 1):
-                    # print(second)
                     time.sleep(1)
                     if second >= time_to_wait:
                         self.bot_object._clear_tails_effect(affected_person)
@@ -56,4 +55,5 @@ class FluffyTailsThread(threading.Thread):
         for i, user in enumerate(tail_effects):
             if tail_effects[user]['expiration_date'] < earliest_expiry:
                 earliest_username_key = user
+                earliest_expiry = tail_effects[user]['expiration_date']
         return earliest_username_key
