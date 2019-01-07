@@ -686,7 +686,7 @@ class Plugin(object):
             self.pm_fix(mask, target, "Too bad you're leaving!")
 
     @command()
-    @channel_only
+    @channel_only()
     async def to(self, mask, target, args):
         """Inform your fellow players of important events
 
@@ -753,7 +753,7 @@ class Plugin(object):
             self.pm_fix(mask, target, "%s" % random.choice(BHROASTS))
 
     @command()
-    @channel_only
+    @channel_only(MAIN_CHANNEL)
     async def question(self, mask, target, args):
         """
 
@@ -824,7 +824,7 @@ class Plugin(object):
         self.pm_fix(mask, target, rtext)
 
     @command()
-    @channel_only
+    @channel_only()
     async def changelog(self, mask, target, args):
         """ See what the future will bring
 
@@ -835,7 +835,7 @@ class Plugin(object):
         self.pm_fix(mask, target, self.ChangelogMarkov.forwardSentence(False, 30, target, includeWord=True))
 
     @command()
-    @channel_only
+    @channel_only()
     async def mgym(self, mask, target, args):
         """ Top gym quotes, all legit!
 
@@ -869,7 +869,7 @@ class Plugin(object):
             return "Disabled the word."
 
     @command()
-    @channel_only
+    @channel_only()
     async def chain(self, mask, target, args):
         """ Chain words both directions <3
 
@@ -908,7 +908,7 @@ class Plugin(object):
             self.bot.privmsg(target, gen)
 
     @command()
-    @channel_only
+    @channel_only()
     async def chainf(self, mask, target, args):
         """ Chain words forwards <3
 
@@ -926,7 +926,7 @@ class Plugin(object):
         self.pm_fix(mask, target, self.AeolusMarkov.forwardSentence(word, 30, target, includeWord=True))
 
     @command()
-    @channel_only
+    @channel_only()
     async def chainb(self, mask, target, args):
         """ Chain words backwards <3
 
@@ -1036,7 +1036,7 @@ class Plugin(object):
         await self.chattip(mask, target, args)
 
     @command()
-    @channel_only
+    @channel_only(MAIN_CHANNEL)
     @nickserv_identified
     async def chattip(self, mask, target, args):
         """ Tip some chatlvl points to someone <3
@@ -1352,7 +1352,7 @@ class Plugin(object):
         self.debugPrint('commandlock release chatlvlpoints eof')
 
     @command(permission='admin', show_in_help_list=False)
-    @channel_only
+    @channel_only()
     @nickserv_identified
     async def chatslap(self, mask, target, args):
         """ Slap someone and remove some of his points
@@ -1460,7 +1460,7 @@ class Plugin(object):
                     del REMINDER_RECEIVERS[receiver]
 
     @command
-    @channel_only
+    @channel_only()
     @nickserv_identified
     def roll(self, mask, target, args):
         """Roll a random number between 0 and 100
@@ -1472,7 +1472,7 @@ class Plugin(object):
         return f'{mask.nick} rolls {random.randint(0, 100)}!'
 
     @command(name='8ball')
-    @channel_only
+    @channel_only()
     @nickserv_identified
     def eight_ball(self, mask, target, args):
         """Ask the mysterious 8ball a question.
@@ -1484,7 +1484,7 @@ class Plugin(object):
         return f'{random.choice(BALL_PHRASES)}'
 
     @command
-    @channel_only
+    @channel_only(MAIN_CHANNEL)
     @nickserv_identified
     def touch(self, mask, target, args):
         """Magical fluffy tails that grant boons or curses to the brave ones that dare touch them. Limited by one touch per day per user.
@@ -1846,7 +1846,7 @@ class Plugin(object):
                 self.bot.privmsg(mask.nick, 'Something went wrong! (probably lower writing strength than needed)')
 
     @command
-    # @channel_only
+    # @channel_only()
     async def chatbet(self, mask, target, args):
         """ Betting!
 
@@ -1912,7 +1912,7 @@ class Plugin(object):
         return {}
 
     @command(show_in_help_list=False)
-    @channel_only
+    @channel_only()
     async def cp(self, mask, target, args):
         """ %%cp join [<points>]
             %%cp signup [<points>]
@@ -1926,7 +1926,7 @@ class Plugin(object):
         return (await self.cpoker(mask, target, args))
 
     @command
-    @channel_only
+    @channel_only()
     async def cpoker(self, mask, target, args):
         """ %%cpoker join [<points>]
             %%cpoker signup [<points>]
@@ -2030,7 +2030,7 @@ class Plugin(object):
         })
 
     @command
-    @channel_only
+    @channel_only()
     async def cr(self, mask, target, args):
         """ Shortcut to the chatroulette command
 
@@ -2039,7 +2039,7 @@ class Plugin(object):
         await self.chatroulette(mask, target, args)
 
     @command
-    @channel_only
+    @channel_only()
     async def chatroulette(self, mask, target, args):
         """ Play the chat point roulette! Bet points, 20s after the initial roll, a winner is chosen.
             Probability scales with points bet. The winner gets all points.

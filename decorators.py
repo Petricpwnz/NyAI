@@ -29,28 +29,40 @@ def nickserv_identified(func):
         return wrapper
 
 
-def channel_only(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            self, target = args[0], args[2]
-            if not self._is_a_channel(target):
-                return 'You can only use this command in channels.'
-        except Exception:
-            pass
-        return func(*args, **kwargs)
+def channel_only(*argz):
+    channels = None
+    if argz:
+        channels = argz
 
-    @wraps(func)
-    async def async_wrapper(*args, **kwargs):
-        try:
-            self, target = args[0], args[2]
-            if not self._is_a_channel(target):
-                return 'You can only use this command in channels.'
-        except Exception:
-            pass
-        return await func(*args, **kwargs)
+    def outer_wrapper(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            nonlocal channels
+            try:
+                self, target = args[0], args[2]
+                if channels and (target not in channels):
+                    return 'You can only use this command in {0}.'.format(channels)
+                if not self._is_a_channel(target):
+                    return 'You can only use this command in channels.'
+            except Exception:
+                pass
+            return func(*args, **kwargs)
 
-    if asyncio.iscoroutinefunction(func):
-        return async_wrapper
-    else:
-        return wrapper
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            nonlocal channels
+            try:
+                self, target = args[0], args[2]
+                if channels and (target not in channels):
+                    return 'You can only use this command in {0}.'.format(channels)
+                if not self._is_a_channel(target):
+                    return 'You can only use this command in channels.'
+            except Exception:
+                pass
+            return await func(*args, **kwargs)
+
+        if asyncio.iscoroutinefunction(func):
+            return async_wrapper
+        else:
+            return wrapper
+    return outer_wrapper
