@@ -1014,9 +1014,9 @@ class Plugin(object):
         if data.get('fluffy_tails', False):
             additions += ", " + format(data.get('fluffy_tails'), '.1f') + " from fluffy tails"
         # try except not working, exception is caught somewhere in irc3 library?
-        if self.__db_get(['fluffy_tails', mask.nick, 'modifier']):
-            modifier = self.__db_get(['fluffy_tails', mask.nick, 'modifier'])
-            expiration_date = str(self.__db_get(['fluffy_tails', mask.nick, 'expiration_date']))[:19]
+        if self.__db_get(['fluffy_tails', name, 'modifier']):
+            modifier = self.__db_get(['fluffy_tails', name, 'modifier'])
+            expiration_date = str(self.__db_get(['fluffy_tails', name, 'expiration_date']))[:19]
             additions += f'. His chatpoint gain from typing is modified by {modifier} until {expiration_date}.'
         self.bot.privmsg(location, "{object}'s points: {total}, level {level}, {toUp} to next level{additions}".format(**{
             "object": name,
