@@ -1014,7 +1014,7 @@ class Plugin(object):
         if self.__db_get(['fluffy_tails', name, 'modifier']):
             modifier = self.__db_get(['fluffy_tails', name, 'modifier'])
             expiration_date = str(self.__db_get(['fluffy_tails', name, 'expiration_date']))[:19]
-            additions += f'. His chatpoint gain from typing is modified by {modifier} until {expiration_date}.'
+            additions += f'. His chatpoint gain from typing is modified by {modifier} until {expiration_date} EET.'
         self.bot.privmsg(location, "{object}'s points: {total}, level {level}, {toUp} to next level{additions}".format(**{
             "object": name,
             "level": str(data.get('level', 1)),
