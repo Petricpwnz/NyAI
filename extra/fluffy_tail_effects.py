@@ -153,7 +153,7 @@ FLUFFY_TAIL_EFFECTS = {
     'large_icp_curse': {
         'points': -200,
         'weight': 15,
-        'message_on_roll': 'But that\'s not Tamamo! It\'s her servant Yao! She milks him and throws away. He loses 200 chatpoints!',
+        'message_on_roll': 'But that\'s not Tamamo! It\'s her servant Yao! She milks him and throws him away. He loses 200 chatpoints!',
         'status_message': ''
     },
     'huge_icp_curse': {
