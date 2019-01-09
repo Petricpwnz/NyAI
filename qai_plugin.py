@@ -36,7 +36,7 @@ from extra.fluffy_tail_effects import FLUFFY_TAIL_EFFECTS
 
 
 FLUFFY_TAIL_EFFECTS = list(FLUFFY_TAIL_EFFECTS.items())
-ADMINS = ['TouchFluffyTails', 'Fremy_Speeddraw', 'Washy', 'Blackheart']
+ADMINS = []
 MAIN_CHANNEL = '#aeolus'  #  autisticenvironment
 POKER_CHANNEL = '#poker'  #  autisticenvironment
 REMINDER_RECEIVERS = {}
@@ -753,7 +753,7 @@ class Plugin(object):
             self.pm_fix(mask, target, "%s" % random.choice(BHROASTS))
 
     @command()
-    @channel_only(MAIN_CHANNEL)
+    @channel_only(MAIN_CHANNEL, admin_chan_only=True)
     async def question(self, mask, target, args):
         """
 
@@ -763,9 +763,6 @@ class Plugin(object):
             %%question TAGS...
         """
         get_tags, tags, abandon = args.get('tags'), args.get('TAGS'), args.get('abandon')
-        global MAIN_CHANNEL
-        if not target == MAIN_CHANNEL:
-            return
         if get_tags:
             if self.spam_protect('question-tags', mask, target, args, specialSpamProtect='question-tags'):
                 return
@@ -1527,7 +1524,7 @@ class Plugin(object):
             with CHATLVL_COMMANDLOCK:
                 self.debugPrint('commandlock acquire tails point manip')
                 name, points = mask.nick, delta
-                self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=True)
+                self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=True, partial=True)
                 self.Chatevents.addEvent('fluffy_tails', {
                     'by': mask.nick,
                     'target': name,
@@ -2404,7 +2401,7 @@ class Plugin(object):
             return
         try:
             elem = random.choice(list(self.__db_get(path).values()))
-            self.bot.privmsg(target, elem)
+            self.pm_fix(mask, target, elem)
         except Exception:
             self.debugPrint('__genericSpamCommand: Trying to sample from empty list: ' + repr(path))
 
