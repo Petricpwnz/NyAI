@@ -56,6 +56,11 @@ class Points():
     def getPointsById(self, id):
         return self.getById(id).get('p', 0)
 
+    def is_in_chat_db(self, id):
+        if id in self.elements:
+            return True
+        return False
+
     def getLevelRemainingNextWithPoints(self, points):
         level = 0
         for pbl in self.pointsByLevel:
@@ -80,6 +85,8 @@ class Points():
             'chattip': element.get('chattip', False),
             'questions': element.get('questions', False),
             'fluffy_tails': element.get('fluffy_tails', False),
+            'items': element.get('items', False),
+            'trading': element.get('trading', False)
         }
 
     def setOnJoinMsgById(self, id, msg, writeStrength=2, announcementStrength=2, delete=False):
@@ -154,6 +161,14 @@ class Points():
             #    del self.elements[id][key]
         self.update_lock.release()
         return True
+
+    def check_by_id(self, id, delta={}):
+        with self.update_lock:
+            for key in delta.keys():
+                new_value = self.elements[id].get(key, 0) + delta[key]
+                if new_value < 0:
+                    return False
+            return True
 
     def updatePointsById(self, id, points, partial=False):
         return self.updateById(id, delta={'p': points}, allowNegative=False, partial=partial)

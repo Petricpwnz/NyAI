@@ -22,8 +22,8 @@ from decorators import nickserv_identified, channel_only
 from extra.twitch import twitchThread
 from timed_input_accumulator import timedInputAccumulatorThread
 from periodic_callback import periodicCallback
-from modules import reminder_thread
-from modules import fluffy_tails_thread
+from modules import reminder_thread, fluffy_tails_thread, market_resupply_thread, rpg_module, generic_modifier_thread
+from modules.special_effect_handler import SpecialEffectHandler
 from modules.markov import Markov
 from points import Points
 from events import Events
@@ -33,12 +33,15 @@ from extra.roasts import BHROASTS
 from modules.questions import Questions
 from extra.eight_ball_phrases import BALL_PHRASES
 from extra.fluffy_tail_effects import FLUFFY_TAIL_EFFECTS
+from extra.chat_upgrades import CHAT_UPGRADES
 
 
 FLUFFY_TAIL_EFFECTS = list(FLUFFY_TAIL_EFFECTS.items())
 ADMINS = []
 MAIN_CHANNEL = '#aeolus'  #  autisticenvironment
 POKER_CHANNEL = '#poker'  #  autisticenvironment
+MARKET_NAME = '#market'
+FREE_MARKET_NAME = '#freemarket'
 REMINDER_RECEIVERS = {}
 IGNOREDUSERS = {}
 CDPRIVILEDGEDUSERS = {}
@@ -89,11 +92,12 @@ class Plugin(object):
         self.loop = asyncio.new_event_loop()
         #asyncio.set_event_loop(self.loop)
         #self.oldHelp = self.help
-        global NICKSERVRESPONSESLOCK, CHATLVL_COMMANDLOCK, REMINDER_DB_ACTION_LOCK, FLUFFY_TAILS_LOCK
+        global NICKSERVRESPONSESLOCK, CHATLVL_COMMANDLOCK, REMINDER_DB_ACTION_LOCK, FLUFFY_TAILS_LOCK, MODIFIER_LOCK
         CHATLVL_COMMANDLOCK = threading.Lock()
         NICKSERVRESPONSESLOCK = threading.Lock()
         REMINDER_DB_ACTION_LOCK = threading.Lock()
         FLUFFY_TAILS_LOCK = threading.Lock()
+        MODIFIER_LOCK = threading.Lock()
 
     def start_reminder_thread(self):
         self.reminder = reminder_thread.ReminderThread(self, self.bot)
@@ -104,6 +108,16 @@ class Plugin(object):
         self.tails = fluffy_tails_thread.FluffyTailsThread(self, self.bot)
         self.tails.daemon = True
         self.tails.start()
+
+    def start_market_thread(self):
+        self.market = market_resupply_thread.MarketResupplyThread(self, self.bot)
+        self.market.daemon = True
+        self.market.start()
+
+    def start_modifier_thread(self):
+        self.modifier = generic_modifier_thread.GenericModifierThread(self, self.bot)
+        self.modifier.daemon = True
+        self.modifier.start()
 
     def debugPrint(self, text):
         if useDebugPrint:
@@ -265,8 +279,8 @@ class Plugin(object):
         DEFAULTVALUE = self.bot.config.get('default_command_point_requirement', 500)
         self.__db_add([], 'ignoredusers', {}, overwrite_if_exists=False, save=False)
         self.__db_add([], 'cdprivilege', {}, overwrite_if_exists=False, save=False)
-        for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder', 'foxgirls',
-                  'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'eightball', 'roll']:
+        for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder', 'foxgirls', 'market'
+                  'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'eightball', 'roll', 'inventory']:
             self.__db_add(['timers'], t, DEFAULTCD, overwrite_if_exists=False, save=False)
         for t in ['cmd_chain_points_min', 'cmd_chainf_points_min', 'cmd_chainb_points_min', 'cmd_chain_points_min',
                   'cmd_rancaps_points_min', 'cmd_answer_qpoints_max', 'cmd_bhroast_points_min', 'cmd_rearrange_points_min',
@@ -285,16 +299,18 @@ class Plugin(object):
         CHATLVLWORDS = self.__db_get(['chatlvlwords'])
         CDPRIVILEDGEDUSERS = self.__db_get(['cdprivilege'])
         CHATLVL_EPOCH = self.__db_get(['chatlvlmisc', 'epoch'])
-        self.AeolusMarkov = Markov(self, self.bot.config.get('markovwordsstorage_chat', './dbmarkovChat.json'))
+        self.AeolusMarkov = Markov(self, self.bot.config.get('markovwordsstorage_chat', './database/dbmarkovChat.json'))
         print('loaded aeolus markov, info:', self.AeolusMarkov.getInfo())
-        self.ChangelogMarkov = Markov(self, self.bot.config.get('markovwordsstorage_changelog', './dbmarkovChangelogs.json'))
+        self.ChangelogMarkov = Markov(self, self.bot.config.get('markovwordsstorage_changelog', './database/dbmarkovChangelogs.json'))
         print('loaded changelog markov, info:', self.ChangelogMarkov.getInfo())
-        self.GymMarkov = Markov(self, self.bot.config.get('markovwordsstorage_gym', './dbmarkovGym.json'))
+        self.GymMarkov = Markov(self, self.bot.config.get('markovwordsstorage_gym', './database/dbmarkovGym.json'))
         print('loaded gym markov, info:', self.ChangelogMarkov.getInfo())
-        self.Chatpoints = Points(self.bot.config.get('chatlevelstorage', './chatlevel.json'))
-        self.Chatevents = Events(self.bot.config.get('chateventstorage', './chatevents.json'))
-        self.Chatbets = Bets(self.bot, self.Chatpoints, self.Chatevents, self.bot.config.get('chatmiscstorage', './chatmisc.json'))
+        self.Chatpoints = Points(self.bot.config.get('chatlevelstorage', './database/chatlevel.json'))
+        self.Chatevents = Events(self.bot.config.get('chateventstorage', './database/chatevents.json'))
+        self.Chatbets = Bets(self.bot, self.Chatpoints, self.Chatevents, self.bot.config.get('chatmiscstorage', './database/chatmisc.json'))
         self.Questions = Questions(self.bot, self.Chatpoints, self.Chatevents, self.bot.config.get('questions', './database/questions.json'))
+        self.Upgrades = rpg_module.Upgrades(self, self.bot.config.get('chatupgradesstorage', './database/chatupgrades.json'))
+        self.SpecialEffectHandler = SpecialEffectHandler(self, CHATLVL_COMMANDLOCK, MODIFIER_LOCK)
         self.Chatpoker = {}
         self.ChatpokerPrev = {}
         self.ChatgameTourneys = {}
@@ -323,6 +339,8 @@ class Plugin(object):
         self.TEXT = ""
         self.start_reminder_thread()
         self.start_fluffy_tails_thread()
+        self.start_market_thread()
+        self.start_modifier_thread()
 
         t1 = time.clock()
         print("Startup time: {t}".format(**{"t": format(t1 - t0, '.4f')}))
@@ -564,7 +582,7 @@ class Plugin(object):
         path = './backups/' + args.get('path', '')
         pathFull = path + str(int(time.time())) + "/"
         os.makedirs(pathFull, exist_ok=True)
-        for obj in [self.Chatpoints, self.Chatevents, self.Chatbets]:
+        for obj in [self.Chatpoints, self.Chatevents, self.Chatbets, self.Upgrades]:
             obj.save()
             shutil.copy2("./" + obj.getFilePath(), pathFull)
         allRelevantBackups = [d[0] for d in os.walk(path)]
@@ -588,6 +606,10 @@ class Plugin(object):
         self.Chatpoints.reset()
         self.Chatevents.reset()
         self.Chatbets.reset()
+        self.Upgrades.reset()
+        self.market.reset()
+        self._reset_tails_effects()
+        self._reset_modifier_effects()
         CHATLVL_EPOCH += 1
         self.save(args={
             'path': 'post-reset/',
@@ -962,10 +984,22 @@ class Plugin(object):
         # wordcount = len(text.split())
         lettercount = len(text.replace(" ", ""))
         try:
-            modifier = self.__db_get(['fluffy_tails', mask.nick, 'modifier'])
-            points += (0.1 * lettercount) * modifier
+            modifiers = [modifier.get('modifier') for modifier in list(self.__db_get(['misc_modifiers', mask.nick]).values())]
+            tails_modifier = self.__db_get(['fluffy_tails', mask.nick, 'modifier'])
+            points += ((0.1 * lettercount) * sum(modifiers)) * tails_modifier
         except (KeyError, TypeError):
-            points += 0.1 * lettercount
+            try:
+                tails_modifier = self.__db_get(['fluffy_tails', mask.nick, 'modifier'])
+                points += (0.1 * lettercount) * tails_modifier
+            except (KeyError, TypeError):
+                try:
+                    modifiers = [modifier.get('modifier') for modifier in list(self.__db_get(['misc_modifiers', mask.nick]).values())]
+                    if modifiers:
+                        points += (0.1 * lettercount) * sum(modifiers)
+                    else:
+                        raise KeyError
+                except (KeyError, TypeError):
+                    points += 0.1 * lettercount
         if channel in self.__db_get(['chatlvlchannels']).values():
             self.Chatpoints.updatePointsById(mask.nick, points)
         if channel.startswith('#'):
@@ -982,6 +1016,334 @@ class Plugin(object):
             req = self.Chatpoints.getPointsForLevelUp(level)
         return level, points
 
+    @command
+    @nickserv_identified
+    def market(self, mask, target, args):
+        """ List currently available items on the market
+
+            %%market
+        """
+        # TODO postpone putting some items on the market, maybe randomize putting different legendaries for diff seasons, update shit accordingly
+        if self.spam_protect('market', mask, target, args, specialSpamProtect='market'):
+            return
+        upgrades, quantities = self.Upgrades.get_upgrade_list()
+        unique_upgrades = len(upgrades)
+        market_stock = self.Upgrades.get_current_market_stock()
+        total_price, total_stock, pagination_counter = 0, 0, 0
+        for i, upgrade in enumerate(upgrades):
+            quantity = market_stock[i][1].get('quantity', 0)
+            total_stock += quantity
+            total_price += self.Upgrades.get_item_price(upgrade) * quantity
+        self.pm_fix(mask, target, f'Items on the market - {unique_upgrades} unique, {total_stock} in stock ⚖, Total combined price - {total_price:.0f}💰.')
+        for i, upgrade in enumerate(upgrades):
+            pagination_counter += 1
+            if self._is_a_channel(target) and pagination_counter > 5:
+                return f'Showing 5 out of {unique_upgrades} items, to see the full list use this command in PM.'
+            self.pm_fix(mask, target, f'{i+1}. {upgrade} - {upgrades[upgrade].get("market_description", "no description.")}   '
+                                      f'{self.Upgrades.get_item_price(upgrade):.0f}💰.  {quantities[i]} ⚖')
+
+    @command
+    @nickserv_identified
+    def freemarket(self, mask, target, args):
+        """ List items put up for sale on open market
+
+            %%freemarket
+        """
+        if self.spam_protect('freemarket', mask, target, args, specialSpamProtect='freemarket'):
+            return
+        upgrades, _ = self.Upgrades.get_upgrade_list()
+        market_offers = self.Upgrades.get_current_free_market_stock()
+        unique_sellers, items = [], []
+        total_price, total_stock, unique_offers, pagination_counter = 0, 0, 0, 0
+        for i, seller in enumerate(market_offers):
+            unique_sellers.append(list(seller[1].items()))
+            for j, offer in enumerate(unique_sellers[i]):
+                unique_offers += 1
+                offer_items = list(offer[1].items())
+                items.append({'item': offer_items[0][0],
+                              'price': offer_items[0][1].get('price', 0),
+                              'quantity': offer_items[0][1].get('quantity', 0),
+                              'seller': seller[0],
+                              'id': offer[0]})
+                quantity = items[j]['quantity']
+                total_stock += quantity
+                total_price += offer_items[0][1].get('price', 0)
+        self.pm_fix(mask, target, f'Offers on the free market - {unique_offers}, {total_stock} items ⚖, Total combined price - {total_price:.0f}💰.')
+        for i in range(unique_offers):
+            pagination_counter += 1
+            if self._is_a_channel(target) and pagination_counter > 5:
+                return f'Showing 5 out of {unique_offers} offers, to see the full list use this command in PM.'
+            self.pm_fix(mask, target, f'{i+1}. {items[i].get("item", "undefined")} - {upgrades[items[i].get("item")].get("market_description", "no description.")}   '
+                                      f'{items[i].get("price", "undefined"):.0f}💰,  {items[i].get("quantity", "undefined")} ⚖ '
+                                      f'- by {items[i].get("seller", "undefined")}. ID - {items[i].get("id", "undefined")}')
+
+    @command
+    @channel_only(MAIN_CHANNEL)
+    @nickserv_identified
+    def buy(self, mask, target, args):
+        """ Buy an item from the market. You have to wrap the item name in quotes.
+
+            %%buy <item> [<quantity>]
+        """
+        upgrade_name = args.get('<item>')
+        try:
+            quantity = int(args.get('<quantity>'))
+        except TypeError:
+            quantity = 1
+        except ValueError:
+            return 'Invalid arguments.'
+
+        if quantity < 1:
+            return 'You have to purchase 1 or more items.'
+        try:
+            if upgrade_name not in CHAT_UPGRADES:
+                raise KeyError
+            enough_items_in_stock = self.Upgrades.check_by_name(MARKET_NAME, upgrade_name, quantity=-quantity)
+            if not enough_items_in_stock:
+                return 'Not enough items in stock.'
+            with CHATLVL_COMMANDLOCK:
+                self.debugPrint('commandlock acquire tails point manip')
+                name, points = mask.nick, self.Upgrades.get_item_price(upgrade_name) * quantity
+                has_enough_pts = self.Chatpoints.check_by_id(name, delta={'p': -points})
+                if not has_enough_pts:
+                    return 'You don\'t have enough chatpoints.'
+                self.Chatpoints.updateById(name, delta={'p': -points}, allowNegative=False, partial=False)
+                self.Chatpoints.updateById(name, delta={'trading': -points}, allowNegative=True)
+                self.Chatevents.addEvent('trading', {
+                    'by': mask.nick,
+                    'target': mask.nick,
+                    'points': -points,
+                })
+            self.debugPrint('commandlock release tails point manip')
+            self.Upgrades.update_by_name(MARKET_NAME, upgrade_name, quantity=-quantity, allow_negative=False)
+            self.Upgrades.update_by_name(mask.nick, upgrade_name, quantity=quantity)
+        except (KeyError, TypeError):
+            return f'Such item doesn\'t exist.'
+        return f'{mask.nick} has successfully bought {quantity} of {upgrade_name} for {points:.0f}💰!'
+
+    @command
+    @channel_only(MAIN_CHANNEL)
+    @nickserv_identified
+    def sell(self, mask, target, args):
+        """ Sell an item on the market for 70% of it's current market price. You have to wrap the item name in quotes.
+
+            %%sell <item> [<quantity>]
+        """
+        upgrade_name = args.get('<item>')
+        try:
+            quantity = int(args.get('<quantity>'))
+        except TypeError:
+            quantity = 1
+        except ValueError:
+            return 'Invalid arguments.'
+
+        if quantity < 1:
+            return 'You have to sell 1 or more items.'
+        try:
+            if upgrade_name not in CHAT_UPGRADES:
+                raise KeyError
+            with CHATLVL_COMMANDLOCK:
+                self.debugPrint('commandlock acquire tails point manip')
+                name, points = mask.nick, (self.Upgrades.get_item_price(upgrade_name) * quantity) * 0.7
+                enough_items_in_inventory = self.Upgrades.check_by_name(name, upgrade_name, quantity=-quantity)
+                if not enough_items_in_inventory:
+                    return 'Not enough items in inventory.'
+                self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=False)
+                self.Chatpoints.updateById(name, delta={'trading': points}, allowNegative=True)
+                self.Chatevents.addEvent('trading', {
+                    'by': mask.nick,
+                    'target': mask.nick,
+                    'points': points,
+                })
+            self.debugPrint('commandlock release tails point manip')
+            self.Upgrades.update_by_name(name, upgrade_name, quantity=-quantity)
+            self.Upgrades.update_by_name(MARKET_NAME, upgrade_name, quantity=quantity)
+        except (KeyError, TypeError):
+            return f'There is no such item in your inventory.'
+        return f'{mask.nick} has successfully sold {quantity} of {upgrade_name} for {points:.0f}💰!'
+
+    @command
+    @channel_only(MAIN_CHANNEL)
+    @nickserv_identified
+    def freebuy(self, mask, target, args):
+        """ Buy an offer from the open market. Target offers using seller's name followed by offer's ID. You can find those by using "!freemarket".
+
+            %%freebuy <seller> <id>
+        """
+        seller, id_ = args.get('<seller>'), args.get('<id>')
+        market_offers = self.Upgrades.get_current_free_market_stock()
+        get_seller, get_id = None, None
+        try:
+            for i, some_seller in enumerate(market_offers):
+                if some_seller[0] == seller:
+                    seller_index, get_seller = i, some_seller[0]
+                    for j, some_id in enumerate(market_offers[i][1]):
+                        if id_ == some_id:
+                            get_id = id_
+            if not get_seller or not get_id:
+                raise KeyError
+        except KeyError:
+            return 'Wrong seller\'s name or ID.'
+        except ValueError:
+            return 'Invalid arguments.'
+        offer = list(market_offers[seller_index][1][get_id].items())
+        upgrade_name = offer[0][0]
+        quantity = offer[0][1].get('quantity')
+        try:
+            with CHATLVL_COMMANDLOCK:
+                self.debugPrint('commandlock acquire tails point manip')
+                name, points = mask.nick, offer[0][1].get('price')
+                has_enough_pts = self.Chatpoints.check_by_id(name, delta={'p': -points})
+                if not has_enough_pts:
+                    return 'You don\'t have enough chatpoints.'
+                self.Chatpoints.updateById(name, delta={'p': -points}, allowNegative=False, partial=False)
+                self.Chatpoints.updateById(name, delta={'trading': -points}, allowNegative=True)
+                self.Chatevents.addEvent('trading', {
+                    'by': mask.nick,
+                    'target': seller,
+                    'points': points,
+                })
+                self.Chatpoints.updateById(seller, delta={'p': points}, allowNegative=False, partial=False)
+                self.Chatpoints.updateById(seller, delta={'trading': points}, allowNegative=True)
+                self.Chatevents.addEvent('trading', {
+                    'by': seller,
+                    'target': mask.nick,
+                    'points': -points,
+                })
+            self.debugPrint('commandlock release tails point manip')
+            self.Upgrades.remove_from_open_market(seller, id_)
+            self.Upgrades.update_by_name(mask.nick, upgrade_name, quantity=quantity)
+        except (KeyError, TypeError):
+            return f'Such item doesn\'t exist.'
+        return f'{mask.nick} has successfully bought {quantity} of {upgrade_name} for {points:.0f}💰 from {seller}!'
+
+    @command
+    @channel_only(MAIN_CHANNEL)
+    @nickserv_identified
+    def freesell(self, mask, target, args):
+        """ Put an item up for sale on the open market. Price is per item. You have to wrap the item name in quotes.
+
+            %%freesell <item> <price> [<quantity>]
+        """
+        upgrade_name, points = args.get('<item>'), int(args.get('<price>'))
+        try:
+            quantity = int(args.get('<quantity>'))
+        except TypeError:
+            quantity = 1
+        except ValueError:
+            return 'Invalid arguments.'
+
+        if quantity < 1:
+            return 'You have to sell 1 or more items.'
+        try:
+            if upgrade_name not in CHAT_UPGRADES:
+                raise KeyError
+            enough_items_in_inventory = self.Upgrades.check_by_name(mask.nick, upgrade_name, quantity=-quantity)
+            if not enough_items_in_inventory:
+                return 'Not enough items in inventory.'
+            self.Upgrades.update_by_name(mask.nick, upgrade_name, quantity=-quantity)
+            self.Upgrades.put_on_open_market(mask.nick, upgrade_name, quantity=quantity, price=points)
+        except (KeyError, TypeError):
+            return f'There is no such item in your inventory.'
+        return f'{mask.nick} has successfully put up {quantity} of {upgrade_name} for sale for {points * quantity:.0f}💰 on open market! Get it while it\'s hot!'
+
+    @command
+    @channel_only(MAIN_CHANNEL)
+    @nickserv_identified
+    def gift(self, mask, target, args):
+        """ Gift some item(s) to your destined love. You have to wrap the item name in quotes.
+
+            %%gift <target> <item> [<quantity>]
+        """
+        if self.spam_protect('gift', mask, target, args, specialSpamProtect='gift', ircSpamProtect=False):
+            return
+        upgrade_name = args.get('<item>')
+        receiver = args.get('<target>')
+        try:
+            quantity = int(args.get('<quantity>'))
+        except TypeError:
+            quantity = 1
+        except ValueError:
+            return 'Invalid arguments.'
+
+        if quantity < 1:
+            return 'You have to gift 1 or more items.'
+        try:
+            if upgrade_name not in CHAT_UPGRADES:
+                raise KeyError
+            name = mask.nick
+            enough_items_in_inventory = self.Upgrades.check_by_name(name, upgrade_name, quantity=-quantity)
+            if not enough_items_in_inventory:
+                return 'Not enough items in inventory.'
+            self.Upgrades.update_by_name(name, upgrade_name, quantity=-quantity)
+            self.Upgrades.update_by_name(receiver, upgrade_name, quantity=quantity)
+        except (KeyError, TypeError):
+            return f'There is no such item in your inventory.'
+        return f'{mask.nick} has successfully given {quantity} of {upgrade_name} to {receiver}!'
+
+    @command
+    @nickserv_identified
+    def inventory(self, mask, target, args):
+        """ List various chat items user owns
+
+            %%inventory [<username>]
+        """
+        if self.spam_protect('chatlvl', mask, target, args, specialSpamProtect='chatlvl', ircSpamProtect=False):
+            if location == MAIN_CHANNEL:
+                location = mask.nick
+        name = args.get('<username>')
+        # These 2 lines because .get(<username>) actually returns none instead of getting the default value if name is not provided
+        if not name:
+            name = mask.nick
+        try:
+            items = self.Upgrades.get_all_by_name(name)
+        except KeyError:
+            return 'No items found.'
+
+        total_price, total_stock, pagination_counter = 0, 0, 0
+        unique_upgrades = len(items)
+        quantity, total_price = [], []
+        for i, item in enumerate(items):
+            quantity.append(item[1].get('quantity', 0))
+            total_stock += quantity[i]
+            total_price.append(self.Upgrades.get_item_price(item[0]) * quantity[i])
+        self.pm_fix(mask, target, f'Items in {name}\'s inventory - {unique_upgrades} unique, {total_stock} ⚖, '
+                                  f'Inventory net worth - {sum(total_price):.0f}💰.')
+
+        for i, item in enumerate(items):
+            pagination_counter += 1
+            if self._is_a_channel(target) and pagination_counter > 5:
+                return f'Showing 5 out of {unique_upgrades} items, to see the full list use this command in PM.'
+            self.pm_fix(mask, target, f'{i+1}. {item[0]} - {quantity[i]} ⚖, {total_price[i]:.0f}💰 total.')
+
+    @command
+    @nickserv_identified
+    def use(self, mask, target, args):
+        """ Use an item in your inventory.
+
+            %%use <item>
+        """
+        upgrade = args.get('<item>', None)
+        try:
+            if self.Upgrades.has_item(mask.nick, upgrade):
+                upgrade_func = self.SpecialEffectHandler.switch.get(upgrade)
+                upgrade_func(mask, target)
+                self.Upgrades.update_by_name(mask.nick, upgrade, quantity=-1)
+            else:
+                raise KeyError
+        except (KeyError, TypeError):
+            return 'You don\'t have such an item.'
+
+    @command
+    def explainmechanics(self, mask, target, args):
+        """ A link to the google doc explaining some various chatpoint/rpg/economy systems of the bot.
+
+            %%explainmechanics
+        """
+        if self.spam_protect('explain', mask, target, args, specialSpamProtect='explain', ircSpamProtect=False):
+            return
+        return 'https://goo.gl/Pxs1hv'
+
     @command()
     async def chatlvl(self, mask, target, args):
         """ Display chatlvl + points
@@ -994,7 +1356,7 @@ class Plugin(object):
                 location = mask.nick
         if not location.startswith("#"):
             location = mask.nick
-        name = args.get('<name>', False)
+        name = args.get('<name>')
         if not name:
             name = mask.nick
         data = self.Chatpoints.getPointDataById(name)
@@ -1010,6 +1372,10 @@ class Plugin(object):
             additions += ", " + format(data.get('questions'), '.1f') + " from questions"
         if data.get('fluffy_tails', False):
             additions += ", " + format(data.get('fluffy_tails'), '.1f') + " from fluffy tails"
+        if data.get('items', False):
+            additions += ", " + format(data.get('items'), '.1f') + " from items"
+        if data.get('trading', False):
+            additions += ", " + format(data.get('trading'), '.1f') + " from trading"
         # try except not working, exception is caught somewhere in irc3 library?
         if self.__db_get(['fluffy_tails', name, 'modifier']):
             modifier = self.__db_get(['fluffy_tails', name, 'modifier'])
@@ -1657,6 +2023,7 @@ class Plugin(object):
             except TypeError:
                 pass
             with FLUFFY_TAILS_LOCK:
+                # TODO fix tails effect retaining the cd and not resetting if the "reset" was rolled
                 self.__db_add(['fluffy_tails'], mask.nick,
                               {'special_effect': pick[1]['special_effect'], 'time': str(time.strftime("%d-%m-%Y %H:%M:%S")),
                               'expiration_date': str(datetime.now() + timedelta(days=1,
@@ -1671,7 +2038,25 @@ class Plugin(object):
 
     def _clear_tails_effect(self, affected_user):
         with FLUFFY_TAILS_LOCK:
-            self.__db_del(['fluffy_tails'], affected_user)
+            try:
+                self.__db_del(['fluffy_tails'], affected_user)
+            except Exception:
+                pass
+
+    def _reset_tails_effects(self):
+        with FLUFFY_TAILS_LOCK:
+            self.__db_del([], 'fluffy_tails')
+
+    def _clear_modifier_effect(self, affected_user, effect_key):
+        with MODIFIER_LOCK:
+            try:
+                self.__db_del(['misc_modifiers', affected_user], effect_key)
+            except Exception:
+                pass
+
+    def _reset_modifier_effects(self):
+        with MODIFIER_LOCK:
+            self.__db_del([], 'misc_modifiers')
 
     def __tourneyAdd(self, id, channel):
         tourneydata = self.ChatgameTourneys.get(channel, False)
@@ -1838,7 +2223,7 @@ class Plugin(object):
             ans = self.Chatpoints.setOnJoinMsgById(name, text, writeStrength=strength,
                                                    announcementStrength=strength, delete=False)
             if ans:
-                self.bot.privmsg(mask.nick, 'The on_join message for this user was set successfullly!')
+                self.bot.privmsg(mask.nick, 'The on_join message for this user was set successfully!')
             else:
                 self.bot.privmsg(mask.nick, 'Something went wrong! (probably lower writing strength than needed)')
 
