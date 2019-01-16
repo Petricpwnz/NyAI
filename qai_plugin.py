@@ -1144,7 +1144,7 @@ class Plugin(object):
                 raise KeyError
             with CHATLVL_COMMANDLOCK:
                 self.debugPrint('commandlock acquire tails point manip')
-                name, points = mask.nick, (self.Upgrades.get_item_price(upgrade_name) * quantity) * 0.7
+                name, points = mask.nick, (self.Upgrades.get_item_price(upgrade_name) * quantity) * 0.5
                 enough_items_in_inventory = self.Upgrades.check_by_name(name, upgrade_name, quantity=-quantity)
                 if not enough_items_in_inventory:
                     return 'Not enough items in inventory.'
