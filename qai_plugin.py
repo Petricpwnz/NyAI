@@ -1125,7 +1125,7 @@ class Plugin(object):
     @channel_only(MAIN_CHANNEL)
     @nickserv_identified
     def sell(self, mask, target, args):
-        """ Sell an item on the market for 70% of it's current market price. You have to wrap the item name in quotes.
+        """ Sell an item on the market for 50% of it's current market price. You have to wrap the item name in quotes.
 
             %%sell <item> [<quantity>]
         """
