@@ -2052,6 +2052,8 @@ class Plugin(object):
         with MODIFIER_LOCK:
             try:
                 self.__db_del(['misc_modifiers', affected_user], effect_key)
+                if not self.__db_get(['misc_modifiers', affected_user]):
+                    self.__db_del(['misc_modifiers'], affected_user)
             except Exception:
                 pass
 
