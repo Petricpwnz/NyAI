@@ -87,6 +87,6 @@ class SpecialEffectHandler:
                                                                                hours=0,
                                                                                weeks=0))},
                               overwrite_if_exists=True, try_saving_with_new_key=False)
-            self.bot_instance.pm_fix(mask.nick, target, f'{mask.nick} uses {itemname}! His chatpoing gain from typing is '
+            self.bot_instance.pm_fix(mask, target, f'{mask.nick} uses {itemname}! His chatpoing gain from typing is '
                                                         f'modified by a factor of {modifier} for {min_lasting} minutes!')
         return potion
