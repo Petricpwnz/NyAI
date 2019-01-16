@@ -1288,8 +1288,9 @@ class Plugin(object):
 
             %%inventory [<username>]
         """
+        location = target
         if self.spam_protect('chatlvl', mask, target, args, specialSpamProtect='chatlvl', ircSpamProtect=False):
-            if location == MAIN_CHANNEL:
+            if target == MAIN_CHANNEL:
                 location = mask.nick
         name = args.get('<username>')
         # These 2 lines because .get(<username>) actually returns none instead of getting the default value if name is not provided
@@ -1307,14 +1308,14 @@ class Plugin(object):
             quantity.append(item[1].get('quantity', 0))
             total_stock += quantity[i]
             total_price.append(self.Upgrades.get_item_price(item[0]) * quantity[i])
-        self.pm_fix(mask, target, f'Items in {name}\'s inventory - {unique_upgrades} unique, {total_stock} ⚖, '
+        self.pm_fix(mask, location, f'Items in {name}\'s inventory - {unique_upgrades} unique, {total_stock} ⚖, '
                                   f'Inventory net worth - {sum(total_price):.0f}💰.')
 
         for i, item in enumerate(items):
             pagination_counter += 1
-            if self._is_a_channel(target) and pagination_counter > 5:
+            if self._is_a_channel(location) and pagination_counter > 5:
                 return f'Showing 5 out of {unique_upgrades} items, to see the full list use this command in PM.'
-            self.pm_fix(mask, target, f'{i+1}. {item[0]} - {quantity[i]} ⚖, {total_price[i]:.0f}💰 total.')
+            self.pm_fix(mask, location, f'{i+1}. {item[0]} - {quantity[i]} ⚖, {total_price[i]:.0f}💰 total.')
 
     @command
     @nickserv_identified
