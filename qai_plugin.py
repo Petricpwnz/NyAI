@@ -1139,38 +1139,41 @@ class Plugin(object):
 
             %%sell <item> [<quantity>]
         """
-        upgrade_name = args.get('<item>')
-        try:
-            quantity = int(args.get('<quantity>'))
-        except TypeError:
-            quantity = 1
-        except ValueError:
-            return 'Invalid arguments.'
+        if self.spam_protect('sell', mask, target, args, specialSpamProtect='sell', ircSpamProtect=False):
+            return
+        return f'This command is turned off until the bot owner isn\'t too lazy to change the dynamic prices to be not abusable.'
+        # upgrade_name = args.get('<item>')
+        # try:
+        #     quantity = int(args.get('<quantity>'))
+        # except TypeError:
+        #     quantity = 1
+        # except ValueError:
+        #     return 'Invalid arguments.'
 
-        if quantity < 1:
-            return 'You have to sell 1 or more items.'
-        try:
-            if upgrade_name not in CHAT_UPGRADES:
-                raise KeyError
-            with CHATLVL_COMMANDLOCK:
-                self.debugPrint('commandlock acquire tails point manip')
-                name, points = mask.nick, (self.Upgrades.get_item_price(upgrade_name) * quantity) * 0.5
-                enough_items_in_inventory = self.Upgrades.check_by_name(name, upgrade_name, quantity=-quantity)
-                if not enough_items_in_inventory:
-                    return 'Not enough items in inventory.'
-                self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=False)
-                self.Chatpoints.updateById(name, delta={'trading': points}, allowNegative=True)
-                self.Chatevents.addEvent('trading', {
-                    'by': mask.nick,
-                    'target': mask.nick,
-                    'points': points,
-                })
-            self.debugPrint('commandlock release tails point manip')
-            self.Upgrades.update_by_name(name, upgrade_name, quantity=-quantity)
-            self.Upgrades.update_by_name(MARKET_NAME, upgrade_name, quantity=quantity)
-        except (KeyError, TypeError):
-            return f'There is no such item in your inventory.'
-        return f'{mask.nick} has successfully sold {quantity} of {upgrade_name} for {points:.0f}💰!'
+        # if quantity < 1:
+        #     return 'You have to sell 1 or more items.'
+        # try:
+        #     if upgrade_name not in CHAT_UPGRADES:
+        #         raise KeyError
+        #     with CHATLVL_COMMANDLOCK:
+        #         self.debugPrint('commandlock acquire tails point manip')
+        #         name, points = mask.nick, (self.Upgrades.get_item_price(upgrade_name, quantity=quantity) * quantity) * 0.5
+        #         enough_items_in_inventory = self.Upgrades.check_by_name(name, upgrade_name, quantity=-quantity)
+        #         if not enough_items_in_inventory:
+        #             return 'Not enough items in inventory.'
+        #         self.Chatpoints.updateById(name, delta={'p': points}, allowNegative=False, partial=False)
+        #         self.Chatpoints.updateById(name, delta={'trading': points}, allowNegative=True)
+        #         self.Chatevents.addEvent('trading', {
+        #             'by': mask.nick,
+        #             'target': mask.nick,
+        #             'points': points,
+        #         })
+        #     self.debugPrint('commandlock release tails point manip')
+        #     self.Upgrades.update_by_name(name, upgrade_name, quantity=-quantity)
+        #     self.Upgrades.update_by_name(MARKET_NAME, upgrade_name, quantity=quantity)
+        # except (KeyError, TypeError):
+        #     return f'There is no such item in your inventory.'
+        # return f'{mask.nick} has successfully sold {quantity} of {upgrade_name} for {points:.0f}💰!'
 
     @command
     @channel_only(MAIN_CHANNEL)
