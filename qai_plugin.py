@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 import random
 import asyncio
+import aiohttp
 import urllib
+import itertools
 
 import irc3
 from irc3.plugins.command import command
@@ -51,6 +53,14 @@ TIMERS = {}
 VARS = {}
 DEFAULTCD = False
 DEFAULTVALUE = False
+
+TWITCH_API_LOGIN = "https://api.twitch.tv/kraken/users/"
+TWITCH_STREAMS = "https://api.twitch.tv/kraken/streams/?game=Supreme+Commander:+Forged+Alliance"  # add the game name at the end of the link (space = "+", eg: Game+Name)
+HIT_BOX_STREAMS = "https://api.hitbox.tv/media/live/list?filter=popular&game=811&hiddenOnly=false&limit=30&liveonly=true&media=true"
+YOUTUBE_NON_API_SEARCH_LINK = "https://www.youtube.com/results?search_query=supreme+commander+%7C+forged+alliance&search_sort=video_date_uploaded&filters=video"
+YOUTUBE_SEARCH = "https://www.googleapis.com/youtube/v3/search?order=date&type=video&part=snippet&q=Forged%2BAlliance|Supreme%2BCommander&relevanceLanguage=en&maxResults=15&key={}"
+YOUTUBE_DETAIL = "https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id={}&key={}"
+YOUTUBE_STREAMS = "https://content.googleapis.com/youtube/v3/search?eventType=live&maxResults=5&order=viewCount&part=snippet&q=Supreme%2BCommander&relevanceLanguage=en&type=video&key={}"
 
 RENAME_API_URL = 'https://api.faforever.com/data/player/{id}?include=names&fields[nameRecord]=name'
 RENAME_API_URL_NAME = 'https://api.faforever.com/data/player?filter=(login=={name})'
@@ -279,7 +289,7 @@ class Plugin(object):
         DEFAULTVALUE = self.bot.config.get('default_command_point_requirement', 500)
         self.__db_add([], 'ignoredusers', {}, overwrite_if_exists=False, save=False)
         self.__db_add([], 'cdprivilege', {}, overwrite_if_exists=False, save=False)
-        for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder', 'foxgirls', 'market'
+        for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder', 'foxgirls', 'market', 'casts', 'streams',
                   'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'eightball', 'roll', 'inventory']:
             self.__db_add(['timers'], t, DEFAULTCD, overwrite_if_exists=False, save=False)
         for t in ['cmd_chain_points_min', 'cmd_chainf_points_min', 'cmd_chainb_points_min', 'cmd_chain_points_min',
@@ -2828,6 +2838,135 @@ class Plugin(object):
             self.bot.privmsg(mask.nick, str(len(dict)) + " elements:")
             for id in dict.keys():
                 self.bot.privmsg(mask.nick, '<%s>: %s' % (id, dict[id]))
+
+    @command
+    @channel_only(MAIN_CHANNEL)
+    async def streams(self, mask, target, args):
+        """List current live streams
+
+            %%streams
+        """
+        if self.spam_protect('streams', mask, target, args, specialSpamProtect='streams'):
+            return
+        streams = await self.hitbox_streams()
+        streams.extend((await self.twitch_streams()))
+        streams.extend((await self.youtube_streams()))
+        blacklist = self.__db_get(['blacklist', 'users'])
+        for stream in streams:
+            if stream["channel"] in blacklist:
+                streams.remove(stream)
+
+        if len(streams) > 0:
+            self.pm_fix(mask, target, "%i streams online:" % len(streams))
+            for stream in streams:
+                self.pm_fix(mask, target, stream['text'], action=True)
+        else:
+            self.pm_fix(mask, target, "Nobody is streaming :'(")
+
+    async def hitbox_streams(self):
+        async with aiohttp.request('GET', HIT_BOX_STREAMS) as req:
+            data = await req.read()
+        try:
+            data = json.loads(data.decode())
+            hitbox_streams = data.get('livestreams', None)
+            if not hitbox_streams:
+                hitbox_streams = data['livestream']
+            live_streams = []
+            for stream in hitbox_streams:
+                live_streams.append({
+                    'channel': stream["media_display_name"],
+                    'text': "%s - %s - %s Since %s (%s viewers) "
+                            % (stream["media_display_name"],
+                               stream["media_status"],
+                               stream["channel"]["channel_link"],
+                               stream["media_live_since"],
+                               stream["media_views"])
+                })
+            return live_streams
+        except (KeyError, ValueError):
+            return []
+
+    async def twitch_streams(self):
+        async with aiohttp.request('GET', TWITCH_STREAMS,
+                                   headers={'Client-ID': self.bot.config['twitch_client_id']}) as req:
+            data = await req.read()
+        try:
+            livestreams = []
+            for stream in json.loads(data.decode())['streams']:
+                t = stream["channel"].get("updated_at", "T0")
+                date = t.split("T")
+                hour = date[1].replace("Z", "")
+                livestreams.append({
+                    'channel': stream["channel"]["display_name"],
+                    'text': "%s - %s - %s since %s (%i viewers) "
+                            % (stream["channel"]["display_name"],
+                               stream["channel"]["status"],
+                               stream["channel"]["url"],
+                               hour,
+                               stream["viewers"])
+                })
+            return livestreams
+        except (KeyError, ValueError):
+            return []
+
+    async def youtube_streams(self):
+        async with aiohttp.request('GET', YOUTUBE_STREAMS.format(self.bot.config['youtube_key'])) as req:
+            data = await req.read()
+        try:
+            live_streams = []
+            for stream in json.loads(data.decode())['items']:
+                t = stream["snippet"].get("publishedAt", "T0")
+                date = t.split("T")
+                hour = date[1].replace("Z", "")
+                hour = (hour.split("."))[0]
+                live_streams.append({
+                    'channel': stream["snippet"]["channelTitle"],
+                    'text': "%s - %s - %s since %s "
+                            % (stream["snippet"]["channelTitle"],
+                               stream["snippet"]["title"],
+                               "https://gaming.youtube.com/watch?v=" + stream["id"]["videoId"],
+                               hour)
+                })
+            return live_streams
+        except (KeyError, ValueError):
+            return []
+
+    @command
+    @channel_only(MAIN_CHANNEL)
+    async def casts(self, mask, target, args):
+        """List recent casts
+
+            %%casts
+        """
+        if self.spam_protect('casts', mask, target, args, specialSpamProtect='casts'):
+            return
+        async with aiohttp.request('GET', YOUTUBE_SEARCH.format(self.bot.config['youtube_key'])) as req:
+            data = json.loads((await req.read()).decode())
+        casts = []
+        try:
+            for item in itertools.takewhile(lambda _: len(casts) < 5, data['items']):
+                channel_title = item['snippet']['channelTitle']
+                if channel_title not in self.__db_get(['ignoredusers']) and channel_title != '':
+                    casts.append(item)
+                    try:
+                        self.pm_fix(mask, target, "{channel}: {title} - {date}: {link}".format(
+                                                  **{
+                                                      "id": item['id']['videoId'],
+                                                      "title": item['snippet']['title'],
+                                                      "channel": channel_title,
+                                                      "description": item['snippet']['description'],
+                                                      "date": time.strftime("%x",
+                                                                            time.strptime(item['snippet']['publishedAt'],
+                                                                                          self.bot.config[
+                                                                                              'youtube_time_fmt'])),
+                                                      "link": "http://youtu.be/{}".format(item['id']['videoId'])
+                                                  }),
+                                    action=True)
+                    except (KeyError, ValueError) as ex:
+                        pass
+        except KeyError:
+            pass
+        self.pm_fix(mask, target, "Find more here: {}".format(YOUTUBE_NON_API_SEARCH_LINK), action=True)
 
     def isInChannel(self, player, channel):
         if isinstance(channel, str):

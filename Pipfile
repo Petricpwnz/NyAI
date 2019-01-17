@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+aiohttp = "==3.4.4"
 configobj = "*"
 "irc3" = "*"
 websockets = "*"

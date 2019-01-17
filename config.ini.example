@@ -12,6 +12,11 @@ twitchoauth = howAboutNo
 twitchhost = irc.chat.twitch.tv
 twitchport = 6667
 
+youtube_key =
+youtube_time_fmt = %Y-%m-%dT%H:%M:%S.%fZ
+
+twitch_client_id =
+
 lstm_chars = ./files/faf_chars.json
 lstm_weights = ./files/faf_weights.npy
 
