@@ -77,6 +77,8 @@ class SpecialEffectHandler:
     def potion_closure(self, itemname='insert item name here', modifier=1, min_lasting=1):
         def potion(mask, target):
             with self.MODIFIERLOCK:
+                if self.bot_instance.modifier.modifiers_arent_empty():
+                    self.bot_instance.modifier.refresh_with_new_modifier()
                 self.bot_instance._Plugin__db_add(['misc_modifiers', mask.nick], itemname,
                               {'modifier': modifier, 'time': str(time.strftime("%d-%m-%Y %H:%M:%S")),
                               'expiration_date': str(datetime.now() + timedelta(days=0,
@@ -88,5 +90,5 @@ class SpecialEffectHandler:
                                                                                weeks=0))},
                               overwrite_if_exists=True, try_saving_with_new_key=False)
             self.bot_instance.pm_fix(mask, target, f'{mask.nick} uses {itemname}! His chatpoing gain from typing is '
-                                                        f'modified by a factor of {modifier} for {min_lasting} minutes!')
+                                                   f'modified by a factor of {modifier} for {min_lasting} minutes!')
         return potion

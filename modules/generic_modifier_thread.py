@@ -11,6 +11,7 @@ class StartOverException(Exception):
 class GenericModifierThread(threading.Thread):
     def __init__(self, bot_object, bot):
         threading.Thread.__init__(self)
+        self.new_modifier = threading.Event()
         self.bot = bot
         self.bot_object = bot_object
 
@@ -23,9 +24,12 @@ class GenericModifierThread(threading.Thread):
                     raise StartOverException
                 time.sleep(1)
                 for second in range(0, time_to_wait + 1):
-                    time.sleep(1)
-                    if second >= time_to_wait:
-                        self.bot_object._clear_modifier_effect(affected_person, earliest_effect_key)
+                    if not self.new_modifier_added():
+                        time.sleep(1)
+                        if second >= time_to_wait:
+                            self.bot_object._clear_modifier_effect(affected_person, earliest_effect_key)
+                    else:
+                        self.unset_new_modifier()
                         raise StartOverException
                 raise StartOverException
             except StartOverException as ex:
@@ -58,3 +62,18 @@ class GenericModifierThread(threading.Thread):
                     earliest_effect_key = effect
                     earliest_expiry = misc_effects[user][effect]['expiration_date']
         return user_key, earliest_effect_key
+
+    def refresh_with_new_modifier(self):
+        return self.new_modifier.set()
+
+    def new_modifier_added(self):
+        return self.new_modifier.is_set()
+
+    def unset_new_modifier(self):
+        return self.new_modifier.clear()
+
+    def modifiers_arent_empty(self):
+        if self.bot_object._Plugin__db_get(['misc_modifiers']):
+            return True
+        else:
+            return False
