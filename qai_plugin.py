@@ -85,6 +85,7 @@ useLSTM = False
 
 @irc3.extend
 def action(bot, *args, nowait=False):
+    bot.privmsg(args[0], '\x01ACTION ' + args[1] + '\x01', nowait=nowait)
 
 
 @irc3.plugin
