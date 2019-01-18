@@ -40,6 +40,9 @@ autojoins =
 spam_protect_time = 60
 default_command_point_requirement = 500
 
+flood_rate = 1
+flood_rate_delay = 3
+
 [irc3.plugins.command]
 antiflood = true
 cmd = !

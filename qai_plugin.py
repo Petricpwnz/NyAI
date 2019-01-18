@@ -84,8 +84,7 @@ useLSTM = False
 
 
 @irc3.extend
-def action(bot, *args):
-    bot.privmsg(args[0], '\x01ACTION ' + args[1] + '\x01')
+def action(bot, *args, nowait=False):
 
 
 @irc3.plugin
@@ -1322,7 +1321,7 @@ class Plugin(object):
             total_stock += quantity[i]
             total_price.append(self.Upgrades.get_item_price(item[0]) * quantity[i])
         self.pm_fix(mask, location, f'Items in {name}\'s inventory - {unique_upgrades} unique, {total_stock} ⚖, '
-                                  f'Inventory net worth - {sum(total_price):.0f}💰.')
+                                    f'Inventory net worth - {sum(total_price):.0f}💰.')
 
         for i, item in enumerate(items):
             pagination_counter += 1
@@ -3055,4 +3054,4 @@ class Plugin(object):
         if action is False:
             return self.bot.privmsg(target, message, nowait=nowait)
         else:
-            return self.bot.action(target, message)
+            return self.bot.action(target, message, nowait=nowait)
