@@ -996,15 +996,21 @@ class Plugin(object):
         try:
             modifiers = [modifier.get('modifier') for modifier in list(self.__db_get(['misc_modifiers', mask.nick]).values())]
             tails_modifier = self.__db_get(['fluffy_tails', mask.nick, 'modifier'])
-            points += ((0.1 * lettercount) * sum(modifiers)) * tails_modifier
+            if modifiers != [] and tails_modifier != {}:
+                points += ((0.1 * lettercount) * sum(modifiers)) * tails_modifier
+            else:
+                raise KeyError
         except (KeyError, TypeError):
             try:
                 tails_modifier = self.__db_get(['fluffy_tails', mask.nick, 'modifier'])
-                points += (0.1 * lettercount) * tails_modifier
+                if tails_modifier != {}:
+                    points += (0.1 * lettercount) * tails_modifier
+                else:
+                    raise KeyError
             except (KeyError, TypeError):
                 try:
                     modifiers = [modifier.get('modifier') for modifier in list(self.__db_get(['misc_modifiers', mask.nick]).values())]
-                    if modifiers:
+                    if modifiers != []:
                         points += (0.1 * lettercount) * sum(modifiers)
                     else:
                         raise KeyError
