@@ -2850,10 +2850,10 @@ class Plugin(object):
 
     @command
     @channel_only(MAIN_CHANNEL)
-    async def streams(self, mask, target, args):
+    async def foxstreams(self, mask, target, args):
         """List current live streams
 
-            %%streams
+            %%foxstreams
         """
         if self.spam_protect('streams', mask, target, args, specialSpamProtect='streams'):
             return
@@ -2942,10 +2942,10 @@ class Plugin(object):
 
     @command
     @channel_only(MAIN_CHANNEL)
-    async def casts(self, mask, target, args):
+    async def foxcasts(self, mask, target, args):
         """List recent casts
 
-            %%casts
+            %%foxcasts
         """
         if self.spam_protect('casts', mask, target, args, specialSpamProtect='casts'):
             return
