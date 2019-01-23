@@ -1857,6 +1857,18 @@ class Plugin(object):
     @command
     @channel_only()
     @nickserv_identified
+    def faf(self, mask, target, args):
+        """Explains FAF
+
+            %%faf
+        """
+        if self.spam_protect('faf', mask, target, args, specialSpamProtect='faf'):
+            return
+        return 'https://forums.furaffinity.net/threads/what-does-faf-mean-to-you.1620828/'
+
+    @command
+    @channel_only()
+    @nickserv_identified
     def roll(self, mask, target, args):
         """Roll a random number between 0 and 100
 
@@ -2013,6 +2025,7 @@ class Plugin(object):
                               {'modifier': pick[1]['modifier'], 'time': str(time.strftime("%d-%m-%Y %H:%M:%S")),
                               'expiration_date': str(datetime.now() + timedelta(days=1,
                                                                                seconds=0,
+                                                                               seconds=60,
                                                                                microseconds=0,
                                                                                milliseconds=0,
                                                                                minutes=0,
