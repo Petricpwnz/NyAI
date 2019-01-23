@@ -2025,7 +2025,6 @@ class Plugin(object):
                               {'modifier': pick[1]['modifier'], 'time': str(time.strftime("%d-%m-%Y %H:%M:%S")),
                               'expiration_date': str(datetime.now() + timedelta(days=1,
                                                                                seconds=0,
-                                                                               seconds=60,
                                                                                microseconds=0,
                                                                                milliseconds=0,
                                                                                minutes=0,
