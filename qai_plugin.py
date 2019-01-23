@@ -290,7 +290,7 @@ class Plugin(object):
         self.__db_add([], 'ignoredusers', {}, overwrite_if_exists=False, save=False)
         self.__db_add([], 'cdprivilege', {}, overwrite_if_exists=False, save=False)
         for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder', 'foxgirls', 'market', 'casts', 'streams',
-                  'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'eightball', 'roll', 'inventory']:
+                  'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'eightball', 'roll', 'inventory', 'yuki']:
             self.__db_add(['timers'], t, DEFAULTCD, overwrite_if_exists=False, save=False)
         for t in ['cmd_chain_points_min', 'cmd_chainf_points_min', 'cmd_chainb_points_min', 'cmd_chain_points_min',
                   'cmd_rancaps_points_min', 'cmd_answer_qpoints_max', 'cmd_bhroast_points_min', 'cmd_rearrange_points_min',
@@ -1841,6 +1841,18 @@ class Plugin(object):
                 if not reminders_left_for_this_receiver:
                     self.__db_del(['reminders'], receiver)
                     del REMINDER_RECEIVERS[receiver]
+
+    @command
+    @channel_only()
+    @nickserv_identified
+    def yuki(self, mask, target, args):
+        """Yuki, Yuki, Yuki Yuki, Yuki Yuki Yuki, Yuki, Yuki
+
+            %%yuki
+        """
+        if self.spam_protect('yuki', mask, target, args, specialSpamProtect='yuki'):
+            return
+        return 'https://youtu.be/NI_fgwbmJg0'
 
     @command
     @channel_only()
