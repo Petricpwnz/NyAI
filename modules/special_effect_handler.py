@@ -171,7 +171,7 @@ class SpecialEffectHandler:
                     self.bot_instance.debugPrint('commandlock acquire item point manip')
                     try:
                         point_share = self.bot_instance.Chatpoints.getPointsById(item_target) * 0.05
-                        points = randint(100, 500) + point_share
+                        points = randint(200, 500) + point_share
                         target_account = self.bot_instance.Chatpoints.getPointsById(item_target)
                         check_pts = target_account - points
                         if check_pts < 0:
