@@ -1077,7 +1077,7 @@ class Plugin(object):
             if self._is_a_channel(target) and pagination_counter > 5:
                 return f'Showing page {parse_page + 1} out of {pages} pages, to see a different page specify the number after "!market".'
             self.pm_fix(mask, target, f'{i+1}. {upgrade[0]} - {upgrades[upgrade[0]].get("market_description", "no description.")}   '
-                                      f'{self.Upgrades.get_item_price(upgrade[0]):.0f}💰.  {quantities[i]} ⚖')
+                                      f'{self.Upgrades.get_item_price(upgrade[0]):.0f}💰.  {quantities[query + i]} ⚖')
 
     @command
     @nickserv_identified

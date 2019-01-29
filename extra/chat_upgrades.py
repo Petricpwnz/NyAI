@@ -70,5 +70,44 @@ CHAT_UPGRADES = {
         'starting_stock': 6,
         'resupply_wait_hrs': 7,
         'market_description': 'Increases points gained from typing by 1200% for 2 minutes.'
-    }
+    },
+    'Lockpick': {
+        'price': 75,
+        'starting_stock': 8,
+        'resupply_wait_hrs': 5,
+        'market_description': 'Attempt to steal points from someone. Low success chance. Varies depending on their security-related items.'
+    },
+    'Safe Cracker': {
+        'price': 175,
+        'starting_stock': 4,
+        'resupply_wait_hrs': 10,
+        'market_description': 'Attempt to steal points from someone. Medium success chance. Varies depending on their security-related items.'
+    },
+    'Sleazy Jew': {
+        'price': 300,
+        'starting_stock': 2,
+        'resupply_wait_hrs': 20,
+        'market_description': 'Attempt to steal points from someone. High success chance. Varies depending on their security-related items.'
+    },
+    'Hardened Lock': {
+        'price': 1000,
+        'starting_stock': 4,
+        'resupply_wait_hrs': 20,
+        'perma': True,
+        'market_description': 'Decreases the chance of successful theft against you (perma). Low effectiveness. Varies depending on their theft-related items.'
+    },
+    'High Grade Safe': {
+        'price': 3000,
+        'starting_stock': 2,
+        'resupply_wait_hrs': 40,
+        'perma': True,
+        'market_description': 'Decreases the chance of successful theft against you (perma). Medium effectiveness. Varies depending on their theft-related items.'
+    },
+    'Secure Chambers': {
+        'price': 8000,
+        'starting_stock': 1,
+        'resupply_wait_hrs': 70,
+        'perma': True,
+        'market_description': 'Decreases the chance of successful theft against you (perma). High effectiveness. Varies depending on their theft-related items.'
+    },
 }
