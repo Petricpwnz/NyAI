@@ -43,6 +43,7 @@ FLUFFY_TAIL_EFFECTS = list(FLUFFY_TAIL_EFFECTS.items())
 ADMINS = []
 MAIN_CHANNEL = '#aeolus'  #  autisticenvironment
 POKER_CHANNEL = '#poker'  #  autisticenvironment
+MARKET_CHANNEL = '#market'  #  autisticenvironment
 MARKET_NAME = '#market'
 FREE_MARKET_NAME = '#freemarket'
 REMINDER_RECEIVERS = {}
@@ -1040,6 +1041,7 @@ class Plugin(object):
 
     @command
     @nickserv_identified
+    @channel_only(MAIN_CHANNEL, MARKET_CHANNEL, admin_chan_only=True)
     def market(self, mask, target, args):
         """ List currently available items on the market. Put a number after the command to specify a page. Shows first 5 items by default.
 
