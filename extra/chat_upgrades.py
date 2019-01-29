@@ -2,19 +2,19 @@ CHAT_UPGRADES = {
     'Fireworks': {
         'price': 125,
         'starting_stock': 8,
-        'resupply_wait_hrs': 5,
+        'resupply_wait_hrs': 10,
         'market_description': 'Remove 20 chatpoints from everyone currently online, including yourself.'
     },
     'Bomb': {
         'price': 400,
         'starting_stock': 4,
-        'resupply_wait_hrs': 10,
+        'resupply_wait_hrs': 15,
         'market_description': 'Remove 80 chatpoints from everyone currently online, including yourself.'
     },
     'Jihad Suit': {
         'price': 800,
         'starting_stock': 2,
-        'resupply_wait_hrs': 20,
+        'resupply_wait_hrs': 30,
         'market_description': 'Remove 180 chatpoints from everyone currently online, including yourself.'
     },
     # 'Tripwire': {

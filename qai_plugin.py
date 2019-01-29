@@ -19,6 +19,7 @@ import json
 import shutil
 from datetime import datetime, timedelta
 from numpy.random import choice
+from numpy import ceil
 
 from decorators import nickserv_identified, channel_only
 from extra.twitch import twitchThread
@@ -290,7 +291,7 @@ class Plugin(object):
         self.__db_add([], 'ignoredusers', {}, overwrite_if_exists=False, save=False)
         self.__db_add([], 'cdprivilege', {}, overwrite_if_exists=False, save=False)
         for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder', 'foxgirls', 'market', 'casts', 'streams',
-                  'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'eightball', 'roll', 'inventory', 'yuki', 'faf']:
+                  'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'jail', 'paybail', 'eightball', 'roll', 'inventory', 'yuki', 'faf  ']:
             self.__db_add(['timers'], t, DEFAULTCD, overwrite_if_exists=False, save=False)
         for t in ['cmd_chain_points_min', 'cmd_chainf_points_min', 'cmd_chainb_points_min', 'cmd_chain_points_min',
                   'cmd_rancaps_points_min', 'cmd_answer_qpoints_max', 'cmd_bhroast_points_min', 'cmd_rearrange_points_min',
@@ -807,14 +808,12 @@ class Plugin(object):
                     self.spam_protect('question', mask, target, args, specialSpamProtect='question')
 
     @command()
+    @channel_only(MAIN_CHANNEL, admin_chan_only=True)
     async def answer(self, mask, target, args):
         """
 
             %%answer TEXT ...
         """
-        global MAIN_CHANNEL
-        if not target == MAIN_CHANNEL:
-            return
         hp, _ = self.has_permissions(mask.nick,
                                      irc_msg_responses=True,
                                      all=[('questionpoints_max', VARS.get('cmd_answer_qpoints_max', DEFAULTVALUE))],
@@ -995,9 +994,16 @@ class Plugin(object):
         lettercount = len(text.replace(" ", ""))
         try:
             modifiers = [modifier.get('modifier') for modifier in list(self.__db_get(['misc_modifiers', mask.nick]).values())]
+            mult_mods = [mod for mod in modifiers if mod < 1]
+            additive_mods = [mod for mod in modifiers if mod >= 1]
+            if mult_mods != []:
+                mult_sum = sum(mult_mods)
+            else:
+                mult_sum = 1
+            additive_sum = sum(additive_mods)
             tails_modifier = self.__db_get(['fluffy_tails', mask.nick, 'modifier'])
             if modifiers != [] and tails_modifier != {}:
-                points += ((0.1 * lettercount) * sum(modifiers)) * tails_modifier
+                    points += ((0.1 * lettercount) * additive_sum) * mult_sum * tails_modifier
             else:
                 raise KeyError
         except (KeyError, TypeError):
@@ -1011,7 +1017,7 @@ class Plugin(object):
                 try:
                     modifiers = [modifier.get('modifier') for modifier in list(self.__db_get(['misc_modifiers', mask.nick]).values())]
                     if modifiers != []:
-                        points += (0.1 * lettercount) * sum(modifiers)
+                        points += ((0.1 * lettercount) * additive_sum) * mult_sum
                     else:
                         raise KeyError
                 except (KeyError, TypeError):
@@ -1035,11 +1041,18 @@ class Plugin(object):
     @command
     @nickserv_identified
     def market(self, mask, target, args):
-        """ List currently available items on the market
+        """ List currently available items on the market. Put a number after the command to specify a page. Shows first 5 items by default.
 
-            %%market
+            %%market [<query>]
         """
         # TODO postpone putting some items on the market, maybe randomize putting different legendaries for diff seasons, update shit accordingly
+        query = None
+        try:
+            parse_page = int(args.get('<query>')) - 1
+            query = parse_page * 5
+        except (ValueError, TypeError):
+            pass
+
         if self.spam_protect('market', mask, target, args, specialSpamProtect='market'):
             return
         upgrades, quantities = self.Upgrades.get_upgrade_list()
@@ -1051,12 +1064,20 @@ class Plugin(object):
             total_stock += quantity
             total_price += self.Upgrades.get_item_price(upgrade) * quantity
         self.pm_fix(mask, target, f'Items on the market - {unique_upgrades} unique, {total_stock} in stock ⚖, Total combined price - {total_price:.0f}💰.')
-        for i, upgrade in enumerate(upgrades):
+        if not query and query != 0:
+            parse_page = 0
+            query = 0
+        upgrade_list = list(upgrades.items())
+        pages = int(ceil(len(upgrade_list) / 5))
+        if len(upgrade_list) < query + 1:
+            query = len(upgrade_list) - 5
+            parse_page = pages - 1
+        for i, upgrade in enumerate(upgrade_list[query:]):
             pagination_counter += 1
             if self._is_a_channel(target) and pagination_counter > 5:
-                return f'Showing 5 out of {unique_upgrades} items, to see the full list use this command in PM.'
-            self.pm_fix(mask, target, f'{i+1}. {upgrade} - {upgrades[upgrade].get("market_description", "no description.")}   '
-                                      f'{self.Upgrades.get_item_price(upgrade):.0f}💰.  {quantities[i]} ⚖')
+                return f'Showing page {parse_page + 1} out of {pages} pages, to see a different page specify the number after "!market".'
+            self.pm_fix(mask, target, f'{i+1}. {upgrade[0]} - {upgrades[upgrade[0]].get("market_description", "no description.")}   '
+                                      f'{self.Upgrades.get_item_price(upgrade[0]):.0f}💰.  {quantities[i]} ⚖')
 
     @command
     @nickserv_identified
@@ -1117,6 +1138,8 @@ class Plugin(object):
             enough_items_in_stock = self.Upgrades.check_by_name(MARKET_NAME, upgrade_name, quantity=-quantity)
             if not enough_items_in_stock:
                 return 'Not enough items in stock.'
+            # if self.Upgrades.is_perma(upgrade_name) and self.Upgrades.has_item(mask.nick, upgrade_name):
+            #     return 'This item is permanent and you already have it.'
             with CHATLVL_COMMANDLOCK:
                 self.debugPrint('commandlock acquire tails point manip')
                 name, points = mask.nick, self.Upgrades.get_item_price(upgrade_name) * quantity
@@ -1338,16 +1361,85 @@ class Plugin(object):
 
     @command
     @nickserv_identified
+    def jail(self, mask, target, args):
+        """ Shows people currently in jail
+
+            %%jail
+        """
+        location = target
+        if self.spam_protect('jail', mask, target, args, specialSpamProtect='jail', ircSpamProtect=False):
+            if target == MAIN_CHANNEL:
+                location = mask.nick
+        misc_effects = self.__db_get(['misc_modifiers'])
+        jail = []
+        for user in misc_effects:
+            for effect in misc_effects[user]:
+                try:
+                    if misc_effects[user][effect]['jail']:
+                        jail.append((user, misc_effects[user][effect]['expiration_date']))
+                except Exception:
+                    continue
+        jail_size = len(jail)
+        self.pm_fix(mask, target, f'People in jail: {jail_size}')
+        pagination_counter = 0
+        for i, person in enumerate(jail):
+            pagination_counter += 1
+            if self._is_a_channel(location) and pagination_counter > 5:
+                return f'Showing 5 out of {jail_size} prisoners, to see the full list use this command in PM.'
+            self.pm_fix(mask, target, f'{i + 1}. {person[0]}, becomes free: {person[1]} EET.')
+
+    @command
+    @nickserv_identified
+    def paybail(self, mask, target, args):
+        """ Pay bail to get out of jail. Costs 200 chatpoints. You can pay bail for someone else if you specify their name.
+
+            %%paybail [<target>]
+        """
+        name = args.get('<target>')
+        if not name:
+            name = mask.nick
+        bail_cost = 200
+        location = target
+        if self.spam_protect('paybail', mask, target, args, specialSpamProtect='paybail', ircSpamProtect=False):
+            if target == MAIN_CHANNEL:
+                location = mask.nick
+        has_enough_pts = self.Chatpoints.check_by_id(mask.nick, delta={'p': -bail_cost})
+        if not has_enough_pts:
+            self.bot.privmsg(location, 'You don\'t have enough chatpoints.')
+            return
+        misc_effects = self.__db_get(['misc_modifiers', name])
+        in_jail = False
+        for effect in list(misc_effects):
+            try:
+                if misc_effects[effect]['jail']:
+                    in_jail = True
+                    self.Chatpoints.updateById(mask.nick, delta={'p': -bail_cost}, allowNegative=False, partial=False)
+                    self.__db_del(['misc_modifiers', name], effect)
+            except Exception:
+                continue
+        if in_jail:
+            self.bot.privmsg(location, f'Successfully released {name} from jail.')
+            return
+        else:
+            self.bot.privmsg(location, f'{name} is not in jail.')
+            return
+
+    @command
+    @nickserv_identified
     def use(self, mask, target, args):
         """ Use an item in your inventory.
 
-            %%use <item>
+            %%use <item> [<target>]
         """
-        upgrade = args.get('<item>', None)
+        user_mods = list(self.__db_get(['misc_modifiers', mask.nick]).values())
+        for effect in user_mods:
+            if effect.get('jail', False):
+                return f'You can\'t use items while in jail. You will be released {effect.get("expiration_date")} EET or you can use !paybail to get out earlier.'
+        upgrade, item_target = args.get('<item>', None), args.get('<target>', None)
         try:
             if self.Upgrades.has_item(mask.nick, upgrade):
                 upgrade_func = self.SpecialEffectHandler.switch.get(upgrade)
-                upgrade_func(mask, target)
+                upgrade_func(mask, target, item_target)
                 self.Upgrades.update_by_name(mask.nick, upgrade, quantity=-1)
             else:
                 raise KeyError
@@ -1397,7 +1489,8 @@ class Plugin(object):
         if data.get('trading', False):
             additions += ", " + format(data.get('trading'), '.1f') + " from trading"
         # try except not working, exception is caught somewhere in irc3 library?
-        if self.__db_get(['fluffy_tails', name, 'modifier']):
+        mod = self.__db_get(['fluffy_tails', name, 'modifier'])
+        if mod != {}:
             modifier = self.__db_get(['fluffy_tails', name, 'modifier'])
             expiration_date = str(self.__db_get(['fluffy_tails', name, 'expiration_date']))[:19]
             additions += f'. His chatpoint gain from typing is modified by {modifier} until {expiration_date} EET.'

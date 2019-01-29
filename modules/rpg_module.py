@@ -32,8 +32,8 @@ class Upgrades:
 
     def set_initial_market_stock(self):
         with self.lock:
-            self.upgrades[MARKET_NAME] = {}
-            self.upgrades[FREE_MARKET_NAME] = {}
+            self.upgrades.get(MARKET_NAME, {})
+            self.upgrades.get(FREE_MARKET_NAME, {})
             for item in CHAT_UPGRADES:
                 if item not in self.upgrades[MARKET_NAME]:
                     self.upgrades[MARKET_NAME][item] = {}
@@ -58,10 +58,24 @@ class Upgrades:
 
     def get_upgrade_list(self):
         chat_upgrade_list = CHAT_UPGRADES
-        quantities = [self.upgrades[MARKET_NAME][item].get('quantity', 'undefined') for item in chat_upgrade_list]
+        try:
+            quantities = [self.upgrades[MARKET_NAME][item].get('quantity', 'undefined') for item in chat_upgrade_list]
+        except KeyError:
+            self.set_initial_market_stock()
+            quantities = [self.upgrades[MARKET_NAME][item].get('quantity', 'undefined') for item in chat_upgrade_list]
         return (chat_upgrade_list, quantities)
 
+    @staticmethod
+    def is_perma(upgrade):
+        try:
+            if CHAT_UPGRADES[upgrade].get('perma', False):
+                return True
+        except KeyError:
+            pass
+        return False
+
     def has_item(self, name, upgrade):
+        # keyerror captured layer above, bad decision but idc since new version of the bot is in the works
         with self.lock:
             if self.upgrades[name][upgrade]:
                 return True

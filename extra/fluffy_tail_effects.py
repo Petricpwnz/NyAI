@@ -75,6 +75,12 @@ FLUFFY_TAIL_EFFECTS = {
         'message_on_roll': 'He wakes up in an unknown field a few dozen kilometers away not remembering anything! He is confused!',
         'status_message': ''
     },
+    'large_cp_neutral2': {
+        'special_effect': None,
+        'weight': 15,
+        'message_on_roll': 'https://youtu.be/otCpCn0l4Wo?t=14',
+        'status_message': ''
+    },
     'huge_cp_neutral': {
         'special_effect': None,
         'weight': 5,
