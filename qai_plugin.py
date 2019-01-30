@@ -1083,6 +1083,7 @@ class Plugin(object):
 
     @command
     @nickserv_identified
+    @channel_only(MAIN_CHANNEL, MARKET_CHANNEL, admin_chan_only=True)
     def freemarket(self, mask, target, args):
         """ List items put up for sale on open market
 
@@ -1117,7 +1118,7 @@ class Plugin(object):
                                       f'- by {items[i].get("seller", "undefined")}. ID - {items[i].get("id", "undefined")}')
 
     @command
-    @channel_only(MAIN_CHANNEL)
+    @channel_only(MAIN_CHANNEL, MARKET_CHANNEL)
     @nickserv_identified
     def buy(self, mask, target, args):
         """ Buy an item from the market. You have to wrap the item name in quotes.
@@ -1163,7 +1164,7 @@ class Plugin(object):
         return f'{mask.nick} has successfully bought {quantity} of {upgrade_name} for {points:.0f}💰!'
 
     @command
-    @channel_only(MAIN_CHANNEL)
+    @channel_only(MAIN_CHANNEL, MARKET_CHANNEL)
     @nickserv_identified
     def sell(self, mask, target, args):
         """ Sell an item on the market for 50% of it's current market price. You have to wrap the item name in quotes.
@@ -1207,7 +1208,7 @@ class Plugin(object):
         # return f'{mask.nick} has successfully sold {quantity} of {upgrade_name} for {points:.0f}💰!'
 
     @command
-    @channel_only(MAIN_CHANNEL)
+    @channel_only(MAIN_CHANNEL, MARKET_CHANNEL)
     @nickserv_identified
     def freebuy(self, mask, target, args):
         """ Buy an offer from the open market. Target offers using seller's name followed by offer's ID. You can find those by using "!freemarket".
@@ -1262,7 +1263,7 @@ class Plugin(object):
         return f'{mask.nick} has successfully bought {quantity} of {upgrade_name} for {points:.0f}💰 from {seller}!'
 
     @command
-    @channel_only(MAIN_CHANNEL)
+    @channel_only(MAIN_CHANNEL, MARKET_CHANNEL)
     @nickserv_identified
     def freesell(self, mask, target, args):
         """ Put an item up for sale on the open market. Price is per item. You have to wrap the item name in quotes.
@@ -1292,7 +1293,7 @@ class Plugin(object):
         return f'{mask.nick} has successfully put up {quantity} of {upgrade_name} for sale for {points * quantity:.0f}💰 on open market! Get it while it\'s hot!'
 
     @command
-    @channel_only(MAIN_CHANNEL)
+    @channel_only(MAIN_CHANNEL, MARKET_CHANNEL)
     @nickserv_identified
     def gift(self, mask, target, args):
         """ Gift some item(s) to your destined love. You have to wrap the item name in quotes.
