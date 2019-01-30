@@ -83,7 +83,7 @@ CHAT_UPGRADES = {
         'resupply_wait_hrs': 10,
         'market_description': 'Attempt to steal points from someone. Medium success chance. Varies depending on their security-related items.'
     },
-    'Sleazy Jew': {
+    'Sneak 100': {
         'price': 300,
         'starting_stock': 2,
         'resupply_wait_hrs': 20,

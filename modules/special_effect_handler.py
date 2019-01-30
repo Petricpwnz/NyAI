@@ -5,6 +5,7 @@ from random import randint, choice
 
 BOT_NAME = 'NyAI'
 
+
 class SpecialEffectHandler:
     def __init__(self, bot, chatlvllock, modlock):
         self.bot_instance = bot
@@ -24,9 +25,9 @@ class SpecialEffectHandler:
             'Chatwarrior Potion': self.potion_closure(itemname='Chatwarrior Potion', modifier=4, min_lasting=60),
             'Berserker Potion': self.potion_closure(itemname='Berserker Potion', modifier=7, min_lasting=15),
             'Ready To Get Kicked': self.potion_closure(itemname='Ready To Get Kicked', modifier=13, min_lasting=2),
-            'Lockpick': self.theft_closure(itemname='Lockpick', chance_increase=25),
-            'Safe Cracker': self.theft_closure(itemname='Safe Cracker', chance_increase=50),
-            'Sleazy Jew': self.theft_closure(itemname='Sleazy Jew', chance_increase=90)
+            'Lockpick': self.theft_closure(itemname='Lockpick', chance_increase=25, percent_steal=0.03),
+            'Safe Cracker': self.theft_closure(itemname='Safe Cracker', chance_increase=50, percent_steal=0.05),
+            'Sneak 100': self.theft_closure(itemname='Sneak 100', chance_increase=90, percent_steal=0.1)
         }
 
     def switch_getter(self):
@@ -101,7 +102,7 @@ class SpecialEffectHandler:
                                                    f'modified by a factor of {modifier} for {min_lasting} minutes!')
         return potion
 
-    def theft_closure(self, itemname='insert item name here', chance_increase=0):
+    def theft_closure(self, itemname='insert item name here', chance_increase=0, percent_steal=0):
         def theft(mask, target, item_target):
             security_items = {
                 'Hardened Lock': {
@@ -170,7 +171,7 @@ class SpecialEffectHandler:
                 with self.CHATLVLLOCK:
                     self.bot_instance.debugPrint('commandlock acquire item point manip')
                     try:
-                        point_share = self.bot_instance.Chatpoints.getPointsById(item_target) * 0.05
+                        point_share = self.bot_instance.Chatpoints.getPointsById(item_target) * percent_steal
                         points = randint(200, 500) + point_share
                         target_account = self.bot_instance.Chatpoints.getPointsById(item_target)
                         check_pts = target_account - points
