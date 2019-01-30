@@ -1085,10 +1085,17 @@ class Plugin(object):
     @nickserv_identified
     @channel_only(MAIN_CHANNEL, MARKET_CHANNEL, admin_chan_only=True)
     def freemarket(self, mask, target, args):
-        """ List items put up for sale on open market
+        """ List items put up for sale on open market. Put a number after the command to specify a page. Shows first 5 items by default.
 
-            %%freemarket
+            %%freemarket [<query>]
         """
+        query = None
+        try:
+            parse_page = int(args.get('<query>')) - 1
+            query = parse_page * 5
+        except (ValueError, TypeError):
+            pass
+
         if self.spam_protect('freemarket', mask, target, args, specialSpamProtect='freemarket'):
             return
         upgrades, _ = self.Upgrades.get_upgrade_list()
@@ -1109,10 +1116,17 @@ class Plugin(object):
                 total_stock += quantity
                 total_price += offer_items[0][1].get('price', 0)
         self.pm_fix(mask, target, f'Offers on the free market - {unique_offers}, {total_stock} items ⚖, Total combined price - {total_price:.0f}💰.')
-        for i in range(unique_offers):
+        if not query and query != 0:
+            parse_page = 0
+            query = 0
+        pages = int(ceil(unique_offers / 5))
+        if unique_offers < query + 1:
+            query = unique_offers - 5
+            parse_page = pages - 1
+        for i in range(unique_offers)[query:]:
             pagination_counter += 1
             if self._is_a_channel(target) and pagination_counter > 5:
-                return f'Showing 5 out of {unique_offers} offers, to see the full list use this command in PM.'
+                return f'Showing page {parse_page + 1} out of {pages} pages, to see a different page specify the number after "!freemarket".'
             self.pm_fix(mask, target, f'{i+1}. {items[i].get("item", "undefined")} - {upgrades[items[i].get("item")].get("market_description", "no description.")}   '
                                       f'{items[i].get("price", "undefined"):.0f}💰,  {items[i].get("quantity", "undefined")} ⚖ '
                                       f'- by {items[i].get("seller", "undefined")}. ID - {items[i].get("id", "undefined")}')
