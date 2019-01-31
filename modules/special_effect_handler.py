@@ -53,7 +53,7 @@ class SpecialEffectHandler:
                         pass
                 self.bot_instance.debugPrint('commandlock release item point manip')
 
-            self.bot_instance.pm_fix(mask.nick, target, f'{mask.nick} uses {itemname}! Everyone in this channel loses {points} points!')
+            self.bot_instance.pm_fix(mask, target, f'{mask.nick} uses {itemname}! Everyone in this channel loses {points} points!')
         return bomb
 
     # def trap_closure(self, tier=1, itemname='insert item name here'):
@@ -129,13 +129,13 @@ class SpecialEffectHandler:
             }
 
             if not item_target:
-                self.bot_instance.pm_fix(mask.nick, target, f'You have to specify the target of theft.')
+                self.bot_instance.pm_fix(mask, target, f'You have to specify the target of theft.')
                 return
             if self.bot_instance._is_a_channel(item_target):
-                self.bot_instance.pm_fix(mask.nick, target, f'You can\'t steal from channels.')
+                self.bot_instance.pm_fix(mask, target, f'You can\'t steal from channels.')
                 return
             if mask.nick == item_target:
-                self.bot_instance.pm_fix(mask.nick, target, f'Really there? Is that some sort of split personality or just exceptionally high intelligence?')
+                self.bot_instance.pm_fix(mask, target, f'Really there? Is that some sort of split personality or just exceptionally high intelligence?')
                 return
             captured_messages = [
                 f'{mask.nick} uses {itemname} on {item_target}! He fails and is captured! '
@@ -194,7 +194,7 @@ class SpecialEffectHandler:
                         gain = 0
                     self.bot_instance.debugPrint('commandlock release item point manip')
 
-                    self.bot_instance.pm_fix(mask.nick, target, f'{mask.nick} uses {itemname} on {item_target}! He successfully steals {gain:.0f} points!')
+                    self.bot_instance.pm_fix(mask, target, f'{mask.nick} uses {itemname} on {item_target}! He successfully steals {gain:.0f} points!')
             else:
                 if bot_steal:
                     with self.CHATLVLLOCK:
@@ -213,5 +213,5 @@ class SpecialEffectHandler:
                                                                                    hours=0,
                                                                                    weeks=0))},
                                   overwrite_if_exists=True, try_saving_with_new_key=False)
-                self.bot_instance.pm_fix(mask.nick, target, choice(captured_messages))
+                self.bot_instance.pm_fix(mask, target, choice(captured_messages))
         return theft

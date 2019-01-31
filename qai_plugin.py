@@ -1435,10 +1435,10 @@ class Plugin(object):
             except Exception:
                 continue
         if in_jail:
-            self.bot.privmsg(location, f'Successfully released {name} from jail.')
+            self.pm_fix(mask, target, f'Successfully released {name} from jail.')
             return
         else:
-            self.bot.privmsg(location, f'{name} is not in jail.')
+            self.pm_fix(mask, target, f'{name} is not in jail.')
             return
 
     @command
