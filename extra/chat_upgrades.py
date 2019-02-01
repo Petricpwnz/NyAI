@@ -74,19 +74,19 @@ CHAT_UPGRADES = {
     'Lockpick': {
         'price': 75,
         'starting_stock': 8,
-        'resupply_wait_hrs': 5,
+        'resupply_wait_hrs': 2,
         'market_description': 'Attempt to steal points from someone. Low success chance. Varies depending on their security-related items.'
     },
     'Safe Cracker': {
         'price': 175,
         'starting_stock': 4,
-        'resupply_wait_hrs': 10,
+        'resupply_wait_hrs': 5,
         'market_description': 'Attempt to steal points from someone. Medium success chance. Varies depending on their security-related items.'
     },
     'Sneak 100': {
         'price': 300,
         'starting_stock': 2,
-        'resupply_wait_hrs': 20,
+        'resupply_wait_hrs': 10,
         'market_description': 'Attempt to steal points from someone. High success chance. Varies depending on their security-related items.'
     },
     'Hardened Lock': {
