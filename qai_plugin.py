@@ -1456,8 +1456,11 @@ class Plugin(object):
         try:
             if self.Upgrades.has_item(mask.nick, upgrade):
                 upgrade_func = self.SpecialEffectHandler.switch.get(upgrade)
-                upgrade_func(mask, target, item_target)
-                self.Upgrades.update_by_name(mask.nick, upgrade, quantity=-1)
+                success = upgrade_func(mask, target, item_target)
+                if success:
+                    self.Upgrades.update_by_name(mask.nick, upgrade, quantity=-1)
+                else:
+                    return
             else:
                 raise KeyError
         except (KeyError, TypeError):

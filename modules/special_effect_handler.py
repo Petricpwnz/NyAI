@@ -54,6 +54,7 @@ class SpecialEffectHandler:
                 self.bot_instance.debugPrint('commandlock release item point manip')
 
             self.bot_instance.pm_fix(mask, target, f'{mask.nick} uses {itemname}! Everyone in this channel loses {points} points!')
+            return True
         return bomb
 
     # def trap_closure(self, tier=1, itemname='insert item name here'):
@@ -100,6 +101,7 @@ class SpecialEffectHandler:
                               overwrite_if_exists=True, try_saving_with_new_key=False)
             self.bot_instance.pm_fix(mask, target, f'{mask.nick} uses {itemname} on {item_target}! His chatpoing gain from typing is '
                                                    f'modified by a factor of {modifier} for {min_lasting} minutes!')
+            return True
         return potion
 
     def theft_closure(self, itemname='insert item name here', chance_increase=0, percent_steal=0):
@@ -130,13 +132,13 @@ class SpecialEffectHandler:
 
             if not item_target:
                 self.bot_instance.pm_fix(mask, target, f'You have to specify the target of theft.')
-                return
+                return False
             if self.bot_instance._is_a_channel(item_target):
                 self.bot_instance.pm_fix(mask, target, f'You can\'t steal from channels.')
-                return
+                return False
             if mask.nick == item_target:
                 self.bot_instance.pm_fix(mask, target, f'Really there? Is that some sort of split personality or just exceptionally high intelligence?')
-                return
+                return False
             captured_messages = [
                 f'{mask.nick} uses {itemname} on {item_target}! He fails and is captured! '
                 f'He will be in jail for 24 hours, unable to gain points from typing or use items! '
@@ -214,4 +216,5 @@ class SpecialEffectHandler:
                                                                                    weeks=0))},
                                   overwrite_if_exists=True, try_saving_with_new_key=False)
                 self.bot_instance.pm_fix(mask, target, choice(captured_messages))
+            return True
         return theft
