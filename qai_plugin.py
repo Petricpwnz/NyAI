@@ -1380,7 +1380,6 @@ class Plugin(object):
             self.pm_fix(mask, location, f'{i+1}. {item[0]} - {quantity[i]} ⚖, {total_price[i]:.0f}💰 total.')
 
     @command
-    @nickserv_identified
     def jail(self, mask, target, args):
         """ Shows people currently in jail
 
@@ -1527,6 +1526,7 @@ class Plugin(object):
         }))
 
     @command(permission='admin', public=False, show_in_help_list=False)
+    @nickserv_identified
     async def chattipadmin(self, mask, target, args):
         """ Tip some chatlvl points to someone <3
 
@@ -2455,6 +2455,7 @@ class Plugin(object):
 
     @command(show_in_help_list=False)
     @channel_only()
+    @nickserv_identified
     async def cp(self, mask, target, args):
         """ %%cp join [<points>]
             %%cp signup [<points>]
@@ -2469,6 +2470,7 @@ class Plugin(object):
 
     @command
     @channel_only()
+    @nickserv_identified
     async def cpoker(self, mask, target, args):
         """ %%cpoker join [<points>]
             %%cpoker signup [<points>]
