@@ -273,6 +273,7 @@ class Plugin(object):
         #await command.help(args)"""
 
     @command(permission='admin', show_in_help_list=False, public=False)
+    @nickserv_identified
     async def restart(self, mask, target, args):
         """Restart stuff
 
@@ -698,6 +699,7 @@ class Plugin(object):
             return "Removed"
 
     @command()
+    @nickserv_identified
     async def poker(self, mask, target, args):
         """Join the poker community
 
@@ -709,6 +711,7 @@ class Plugin(object):
             self.pm_fix(mask, target, "Welcome in the poker community!")
 
     @command()
+    @nickserv_identified
     async def unpoker(self, mask, target, args):
         """Leave the poker community
 
@@ -1957,7 +1960,6 @@ class Plugin(object):
 
     @command
     @channel_only()
-    @nickserv_identified
     def yuki(self, mask, target, args):
         """Yuki, Yuki, Yuki Yuki, Yuki Yuki Yuki, Yuki, Yuki
 
@@ -1969,7 +1971,6 @@ class Plugin(object):
 
     @command
     @channel_only()
-    @nickserv_identified
     def faf(self, mask, target, args):
         """Explains FAF
 
@@ -2572,6 +2573,7 @@ class Plugin(object):
 
     @command
     @channel_only()
+    @nickserv_identified
     async def cr(self, mask, target, args):
         """ Shortcut to the chatroulette command
 
@@ -2581,6 +2583,7 @@ class Plugin(object):
 
     @command
     @channel_only()
+    @nickserv_identified
     async def chatroulette(self, mask, target, args):
         """ Play the chat point roulette! Bet points, 20s after the initial roll, a winner is chosen.
             Probability scales with points bet. The winner gets all points.
