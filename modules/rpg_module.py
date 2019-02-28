@@ -35,10 +35,16 @@ class Upgrades:
             self.upgrades.get(MARKET_NAME, {})
             self.upgrades.get(FREE_MARKET_NAME, {})
             for item in CHAT_UPGRADES:
-                if item not in self.upgrades[MARKET_NAME]:
-                    self.upgrades[MARKET_NAME][item] = {}
-                if 'quantity' not in self.upgrades[MARKET_NAME][item]:
-                    self.upgrades[MARKET_NAME][item]['quantity'] = CHAT_UPGRADES[item].get('starting_stock', 0)
+                try:
+                    if item not in self.upgrades[MARKET_NAME]:
+                        self.upgrades[MARKET_NAME][item] = {}
+                except KeyError:
+                    self.upgrades[MARKET_NAME] = {}
+                try:
+                    if 'quantity' not in self.upgrades[MARKET_NAME][item]:
+                        self.upgrades[MARKET_NAME][item]['quantity'] = CHAT_UPGRADES[item].get('starting_stock', 0)
+                except KeyError:
+                    pass
         self.set_initial_resupply_timers()
 
     def set_initial_resupply_timers(self):
@@ -174,10 +180,18 @@ class Upgrades:
         return price
 
     def get_current_market_stock(self):
-        return self.get_all_by_name(MARKET_NAME)
+        try:
+            return self.get_all_by_name(MARKET_NAME)
+        except KeyError:
+            self.upgrades[MARKET_NAME] = {}
+            return self.get_all_by_name(MARKET_NAME)
 
     def get_current_free_market_stock(self):
-        return self.get_all_by_name(FREE_MARKET_NAME)
+        try:
+            return self.get_all_by_name(FREE_MARKET_NAME)
+        except KeyError:
+            self.upgrades[FREE_MARKET_NAME] = {}
+            return self.get_all_by_name(FREE_MARKET_NAME)
 
     def check_by_name(self, name, upgrade, quantity=0):
         with self.lock:

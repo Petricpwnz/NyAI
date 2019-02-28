@@ -2748,6 +2748,16 @@ class Plugin(object):
             self.bot.privmsg(mask.nick, "Failed")
             """
 
+    @command(permission='admin', show_in_help_list=False, public=False)
+    @nickserv_identified
+    def reset(self, mask, target, args):
+        """Reset the epoch
+
+            %%reset
+        """
+        self.chatreset()
+        return "Reset successful."
+
     @command(permission='admin', show_in_help_list=False)
     async def maitest(self, mask, target, args):
         """ Test functionality
@@ -3148,9 +3158,9 @@ class Plugin(object):
             %%hidden
         """
         words = ["join", "leave", "files", "cd", "vars", "savedb", "twitchjoin", "twitchleave",
-                 "twitchmsg", "list", "ignore", "cdprivilege", "chainadmin", "catsadmin",
+                 "twitchmsg", "list", "ignore", "cdprivilege", "chainadmin", "catsadmin", "foxgirlsadmin",
                  "chatlvlwords", "chatlvlpoints", "chatslap", "maibotapi", "restart",
-                 "chatgamesadmin", "chatlvlchannels", "chattipadmin", "chatbetadmin", "onjoinmsgadmin"]
+                 "chatgamesadmin", "chatlvlchannels", "chattipadmin", "chatbetadmin", "onjoinmsgadmin", "reset"]
         self.bot.privmsg(mask.nick, "Hidden commands (!help <command> for more info):")
         #for word in words:
         #    self.bot.privmsg(mask.nick, "- " + word)
