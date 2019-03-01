@@ -40,6 +40,7 @@ from extra.chat_upgrades import CHAT_UPGRADES
 
 
 FLUFFY_TAIL_EFFECTS = list(FLUFFY_TAIL_EFFECTS.items())
+OFFLINE_MESSAGE_RECEIVERS = {}
 ADMINS = []
 MAIN_CHANNEL = '#aeolus'  #  autisticenvironment
 POKER_CHANNEL = '#poker'  #  autisticenvironment
@@ -161,6 +162,8 @@ class Plugin(object):
                     "name": nick,
                     "rank": str(CHATLVL_TOPPLAYERS.get(nick, -1))
                 }))
+        if OFFLINE_MESSAGE_RECEIVERS.get(mask.nick, False):
+            self._try_deliver_offline_messages(mask.nick)
 
     def __addText(self, text):
         try:
@@ -286,7 +289,7 @@ class Plugin(object):
         time.clock()
         t0 = time.clock()
         global TIMERS, VARS, IGNOREDUSERS, DEFAULTC, CDPRIVILEDGEDUSERS, DEFAULTCD, DEFAULTVALUE, ADMINS
-        global CHATLVLWORDS, CHATLVLEVENTDATA, CHATLVL_TOPPLAYERS, CHATLVL_EPOCH
+        global CHATLVLWORDS, CHATLVLEVENTDATA, CHATLVL_TOPPLAYERS, CHATLVL_EPOCH, OFFLINE_MESSAGE_RECEIVERS
         ADMINS = [n.split('@')[0].replace('!', '').replace('*', '') for n, v in self.bot.config['irc3.plugins.command.masks'].items() if len(v) > 5]
         DEFAULTCD = self.bot.config.get('spam_protect_time', 600)
         DEFAULTVALUE = self.bot.config.get('default_command_point_requirement', 500)
@@ -302,6 +305,9 @@ class Plugin(object):
         self.__db_add([], 'chatlvltopplayers', {}, overwrite_if_exists=False, save=False)
         self.__db_add([], 'chatlvlwords', {}, overwrite_if_exists=False, save=False)
         self.__db_add(['chatlvlmisc'], 'epoch', 1, overwrite_if_exists=False, save=True)
+        for r in self.__db_get(['offlinemessages']).keys():
+            OFFLINE_MESSAGE_RECEIVERS[r] = True
+            self._try_deliver_offline_messages(r)
         for r in self.__db_get(['reminders']).keys():
             REMINDER_RECEIVERS[r] = True
         IGNOREDUSERS = self.__db_get(['ignoredusers'])
@@ -1957,6 +1963,43 @@ class Plugin(object):
                 if not reminders_left_for_this_receiver:
                     self.__db_del(['reminders'], receiver)
                     del REMINDER_RECEIVERS[receiver]
+
+    @command(permission='admin', public=False, show_in_help_list=False, name='offlinemessage')
+    @nickserv_identified
+    def offline_message(self, mask, target, args):
+        """Store an offline message, it is delivered once the person logs on
+            %%offlinemessage <playername> WORDS ...
+        """
+        player_name, message = args.get('<playername>'), " ".join(args.get('WORDS'))
+        if not self._is_a_nickname(player_name):
+            return 'Invalid nickname.'
+        if mask.nick == player_name:
+            self._taunt(mask.nick)
+            return
+        is_online, channel = self.__is_in_bot_channel(player_name)
+        if is_online:
+            return "The player is online in " + channel + ", tell him yourself."
+        self.__db_add(['offlinemessages', player_name], mask.nick,
+                      {'message': message, 'sender': mask.nick, 'time': str(time.strftime("%d-%m-%Y %H:%M:%S"))},
+                      overwrite_if_exists=False, try_saving_with_new_key=True)
+        OFFLINE_MESSAGE_RECEIVERS[player_name] = True
+        self.bot.privmsg(mask.nick,
+                         "The message is saved and will be delivered once " + player_name + " is online again.")
+
+    def _try_deliver_offline_messages(self, receiver):
+        if OFFLINE_MESSAGE_RECEIVERS.get(receiver, False):
+            is_online, _ = self.__is_in_bot_channel(receiver)
+            if is_online:
+                if self.__is_nick_serv_identified(receiver):
+                    messages = self.__db_get(['offlinemessages', receiver]).values()
+                    for m in messages:
+                        self.bot.privmsg(receiver, '"{message}" - Sent by {sender}, {time}'.format(**{
+                            'message': m.get('message', "<message>"),
+                            'sender': m.get('sender', "<sender>"),
+                            'time': m.get('time', "<time>"),
+                        }))
+                    del OFFLINE_MESSAGE_RECEIVERS[receiver]
+                    self.__db_del(['offlinemessages'], receiver)
 
     @command
     @channel_only()
