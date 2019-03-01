@@ -1881,7 +1881,7 @@ class Plugin(object):
         self.debugPrint('commandlock release chatslap eof')
 
     #TODO get rid of mandatory argument order
-    @command
+    @command(permission='admin', show_in_help_list=False)
     @nickserv_identified
     def remind(self, mask, target, args):
         """Have the bot deliver a message after specified time.
@@ -1980,7 +1980,7 @@ class Plugin(object):
             return
         return 'https://forums.furaffinity.net/threads/what-does-faf-mean-to-you.1620828/'
 
-    @command
+    @command(permission='admin', show_in_help_list=False)
     @channel_only()
     @nickserv_identified
     def roll(self, mask, target, args):
@@ -1992,7 +1992,7 @@ class Plugin(object):
             return
         return f'{mask.nick} rolls {random.randint(0, 100)}!'
 
-    @command(name='8ball')
+    @command(name='8ball', permission='admin', show_in_help_list=False)
     @channel_only()
     @nickserv_identified
     def eight_ball(self, mask, target, args):
