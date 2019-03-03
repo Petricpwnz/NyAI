@@ -295,7 +295,7 @@ class Plugin(object):
         DEFAULTVALUE = self.bot.config.get('default_command_point_requirement', 500)
         self.__db_add([], 'ignoredusers', {}, overwrite_if_exists=False, save=False)
         self.__db_add([], 'cdprivilege', {}, overwrite_if_exists=False, save=False)
-        for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder', 'foxgirls', 'market', 'casts', 'streams',
+        for t in ['chain', 'chainprob', 'textchange', 'twitchchain', 'generate', 'chattip', 'chatlvl', 'chatladder', 'foxgirls', 'market', 'casts', 'streams', 'weakness',
                   'chatgames', 'chatbet', 'toGroup', 'roast', 'question', 'question-tags', 'spam_cats', 'onjoin', 'jail', 'paybail', 'eightball', 'roll', 'inventory', 'yuki', 'faf  ']:
             self.__db_add(['timers'], t, DEFAULTCD, overwrite_if_exists=False, save=False)
         for t in ['cmd_chain_points_min', 'cmd_chainf_points_min', 'cmd_chainb_points_min', 'cmd_chain_points_min',
@@ -2031,7 +2031,7 @@ class Plugin(object):
 
             %%roll
         """
-        if self.spam_protect('roll', mask, target, args, specialSpamProtect='roll'):
+        if self.spam_protect('weakness', mask, target, args, specialSpamProtect='weakness'):
             return
         return f'{mask.nick} rolls {random.randint(0, 100)}!'
 
