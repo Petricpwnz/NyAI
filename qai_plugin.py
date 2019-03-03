@@ -2035,6 +2035,17 @@ class Plugin(object):
             return
         return f'{mask.nick} rolls {random.randint(0, 100)}!'
 
+    @command
+    @channel_only()
+    def weakness(self, mask, target, args):
+        """Weakness digusts me
+
+            %%weakness
+        """
+        if self.spam_protect('roll', mask, target, args, specialSpamProtect='roll'):
+            return
+        return 'https://i.imgur.com/se1UoSX.png'
+
     @command(name='8ball', permission='admin', show_in_help_list=False)
     @channel_only()
     @nickserv_identified
